@@ -194,6 +194,34 @@ function sendChatMessage() {
 }
 
 // ==========================================
+// 2.5 CHARGEMENT DES SPRITES
+// ==========================================
+const sprites = {};
+const colors = ['blue', 'green', 'red', 'yellow'];
+const directions = ['L', 'R']; // Left et Right
+
+function loadAssets() {
+    colors.forEach(color => {
+        sprites[color] = {
+            immo: new Image(), immo_cat: new Image(),
+            jump_L: new Image(), jump_R: new Image(), // Séparés par direction
+            jump_cat_L: new Image(), jump_cat_R: new Image(),
+            w1_L: new Image(), w1_R: new Image(),
+            w1_cat_L: new Image(), w1_cat_R: new Image(),
+            w2_L: new Image(), w2_R: new Image(),
+            w2_cat_L: new Image(), w2_cat_R: new Image(),
+            ice: new Image()
+        };
+        // Exemple de chargement pour le bleu (à répéter pour chaque couleur)
+        // Note : assure-toi que tes fichiers correspondent aux noms utilisés ici
+        sprites[color].immo.src = `assets/${color}_immo.png`;
+        sprites[color].w1_L.src = `assets/${color}_w1_L.png`;
+        sprites[color].w1_R.src = `assets/${color}_w1_R.png`; // Pense à créer les versions R si tu les as
+        // ... etc ...
+    });
+}
+
+// ==========================================
 // 3. ÉVÉNEMENTS SOCKET (MODE EN LIGNE)
 // ==========================================
 
@@ -512,41 +540,52 @@ class TagEngine {
     }
 
     draw() {
+        // 1. Fond du jeu (à adapter selon ton biome actuel)
         this.ctx.fillStyle = '#4facfe';
         this.ctx.fillRect(0, 0, this.width, this.height);
 
+        // 2. Dessin des plateformes
         this.ctx.fillStyle = '#2c3e50';
         for (let plat of this.platforms) {
             this.ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
         }
 
+        // 3. Dessin des joueurs avec sprites
         for (let p of this.players) {
-            // Corps du joueur
-            this.ctx.fillStyle = p.color;
-            this.ctx.fillRect(p.x, p.y, p.w, p.h);
-            this.ctx.strokeStyle = '#000';
-            this.ctx.lineWidth = 2;
-            this.ctx.strokeRect(p.x, p.y, p.w, p.h);
+            let colorName = colors[p.id - 1] || 'blue';
+            let dir = p.vx >= 0 ? 'R' : 'L'; // Droite ou Gauche selon la vitesse
+            let state = 'immo';
 
-            // Pseudo au-dessus
+            // Logique d'état
+            if (!p.onGround) {
+                state = 'jump';
+            } else if (Math.abs(p.vx) > 0.5) {
+                // Alterne w1 et w2 toutes les 200ms
+                state = (Math.floor(Date.now() / 200) % 2 === 0) ? 'w1' : 'w2';
+            }
+
+            // Construction de la clé pour trouver l'image
+            let key = (state === 'immo') ? 'immo' : `${state}_${dir}`;
+            if (p.id === this.taggerId) key += '_cat';
+
+            let asset = sprites[colorName][key] || sprites[colorName].immo;
+
+            // Sauvegarde du contexte pour le miroir (si on va à droite)
+            this.ctx.save();
+            if (dir === 'R') {
+                // On inverse horizontalement pour la direction droite
+                this.ctx.scale(-1, 1);
+                this.ctx.drawImage(asset, -p.x - p.w, p.y, p.w, p.h);
+            } else {
+                this.ctx.drawImage(asset, p.x, p.y, p.w, p.h);
+            }
+            this.ctx.restore();
+
+            // 4. Dessin du pseudo
             this.ctx.fillStyle = '#fff';
             this.ctx.font = '10px Outfit, sans-serif';
             this.ctx.textAlign = 'center';
-            const label = p.pseudo || (this.isOnline ? p.id : `J${p.id}`);
-            this.ctx.fillText(label, p.x + p.w / 2, p.y - 18);
-
-            // Triangle rouge pour le chat
-            const isTagged = this.isOnline ? (p.id === this.taggerId) : (p.id === this.taggerId);
-            if (isTagged) {
-                this.ctx.fillStyle = '#ff0000';
-                this.ctx.beginPath();
-                this.ctx.moveTo(p.x + p.w / 2, p.y - 28);
-                this.ctx.lineTo(p.x + p.w / 2 - 10, p.y - 18);
-                this.ctx.lineTo(p.x + p.w / 2 + 10, p.y - 18);
-                this.ctx.fill();
-                this.ctx.strokeStyle = '#000';
-                this.ctx.stroke();
-            }
+            this.ctx.fillText(p.pseudo, p.x + p.w / 2, p.y - 10);
         }
     }
 
