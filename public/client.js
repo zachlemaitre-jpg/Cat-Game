@@ -555,33 +555,44 @@ class TagEngine {
             this.ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
         }
 
-        // 3. Dessin des joueurs avec leurs sprites spécifiques
+        // 3. Dessin des joueurs
         for (let p of this.players) {
             let colorName = colors[p.id - 1] || 'blue';
             let dir = p.vx >= 0 ? 'R' : 'L';
             let state = 'immo';
 
-            if (!p.onGround) state = 'jump';
-            else if (Math.abs(p.vx) > 0.5) state = (Math.floor(Date.now() / 200) % 2 === 0) ? 'w1' : 'w2';
+            if (!p.onGround) {
+                state = 'jump';
+            } else if (Math.abs(p.vx) > 0.5) {
+                state = (Math.floor(Date.now() / 200) % 2 === 0) ? 'w1' : 'w2';
+            }
 
-            let key = (state === 'immo') ? 'immo' : `${state}_${dir}`;
+            // Construction de la clé :
+            // Si immo ou jump, pas de suffixe _L ou _R
+            let key = (state === 'immo' || state === 'jump') ? state : `${state}_${dir}`;
+            
+            // Si c'est le tagger (loup/chat), on ajoute le suffixe _cat
             if (p.id === this.taggerId) key += '_cat';
 
             let asset = sprites[colorName] ? sprites[colorName][key] : null;
 
-            // --- ICI LA MODIFICATION POUR VOIR LES JOUEURS ---
+            // Dessin du sprite ou du rectangle de secours
             if (asset && asset.complete && asset.naturalWidth > 0) {
                 this.ctx.drawImage(asset, p.x, p.y, p.w, p.h);
             } else {
-                // Dessin de secours : un rectangle coloré pour voir si le joueur existe
                 this.ctx.fillStyle = (p.id === this.taggerId) ? '#ff0000' : (p.color || '#fff');
                 this.ctx.fillRect(p.x, p.y, p.w, p.h);
             }
-            // 4. Dessin du pseudo
-            this.ctx.fillStyle = '#fff';
-            this.ctx.font = '10px Outfit, sans-serif';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText(p.pseudo, p.x + p.w / 2, p.y - 10);
+
+            // 4. Triangle retourné au-dessus de la tête
+            let centerX = p.x + p.w / 2;
+            this.ctx.fillStyle = p.color; // Couleur du triangle = couleur du joueur
+            this.ctx.beginPath();
+            this.ctx.moveTo(centerX, p.y - 5);      // Pointe en bas
+            this.ctx.lineTo(centerX - 6, p.y - 15); // Sommet gauche
+            this.ctx.lineTo(centerX + 6, p.y - 15); // Sommet droit
+            this.ctx.closePath();
+            this.ctx.fill();
         }
     }
 
