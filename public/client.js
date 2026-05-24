@@ -560,24 +560,20 @@ class TagEngine {
             let dir = p.vx >= 0 ? 'R' : 'L';
             let state = 'immo';
 
-            if (!p.onGround) {
-                state = 'jump';
-            } else if (Math.abs(p.vx) > 0.5) {
-                state = (Math.floor(Date.now() / 200) % 2 === 0) ? 'w1' : 'w2';
-            }
+            if (!p.onGround) state = 'jump';
+            else if (Math.abs(p.vx) > 0.5) state = (Math.floor(Date.now() / 200) % 2 === 0) ? 'w1' : 'w2';
 
-            // Construction dynamique du nom de l'image
             let key = (state === 'immo') ? 'immo' : `${state}_${dir}`;
             if (p.id === this.taggerId) key += '_cat';
 
             let asset = sprites[colorName] ? sprites[colorName][key] : null;
-            
-            // Fallback de sécurité si l'image n'est pas encore chargée
-            if (asset && asset.complete) {
+
+            // --- ICI LA MODIFICATION POUR VOIR LES JOUEURS ---
+            if (asset && asset.complete && asset.naturalWidth > 0) {
                 this.ctx.drawImage(asset, p.x, p.y, p.w, p.h);
             } else {
-                // Dessin temporaire si l'image manque
-                this.ctx.fillStyle = p.color;
+                // Dessin de secours : un rectangle coloré pour voir si le joueur existe
+                this.ctx.fillStyle = (p.id === this.taggerId) ? '#ff0000' : (p.color || '#fff');
                 this.ctx.fillRect(p.x, p.y, p.w, p.h);
             }
             // 4. Dessin du pseudo
