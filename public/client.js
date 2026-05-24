@@ -1,5 +1,5 @@
 // ==========================================
-// 1. VARIABLES GLOBALES ET ÉTAT DE L'INTERFACE
+// 1. VARIABLES GLOBALES
 // ==========================================
 let socket = null;
 if (typeof io !== 'undefined') {
@@ -8,56 +8,125 @@ if (typeof io !== 'undefined') {
 
 let gameMode = 'local';
 let currentMapIndex = 0;
-let gameSettings = { buffs: true, time: 120 };
+let gameSettings = { mapIndex: 0, buffs: true, time: 120 };
+let isHost = true;
+let currentRoom = '';
+let myGlobalPseudo = 'Joueur';
+let myPlayerId = 1; // numéro de joueur (1-6) ou 'spectator'
+
+const PLAYER_COLORS = ['#e63946', '#2196f3', '#2ecc71', '#f4e04d', '#ff4081', '#18ffff'];
 
 // ==========================================
-// 2. GESTION DE L'INTERFACE (MENUS & MODALES)
+// 2. GESTION DE L'INTERFACE (MENUS)
 // ==========================================
 
 function showScreen(screenId) {
-    document.getElementById('main-menu').classList.add('hidden');
-    document.getElementById('connection-screen').classList.add('hidden');
-    document.getElementById('lobby-screen').classList.add('hidden');
-    document.getElementById('game-screen').classList.add('hidden');
+    ['main-menu', 'connection-screen', 'lobby-screen', 'game-screen'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+    });
     document.getElementById(screenId).classList.remove('hidden');
 }
 
 function selectMode(mode) {
     gameMode = mode;
     if (mode === 'local') {
-        // En local, on saute l'étape de connexion et on va direct au lobby
+        isHost = true;
         showScreen('lobby-screen');
-        updateLobbyUI();
+        updateLobbyForLocal();
     } else {
-        // En ligne, on demande le pseudo et le salon
         showScreen('connection-screen');
     }
 }
 
+// ─── MODE EN LIGNE ────────────────────────────────────────────────────────────
+
 function joinOrCreateRoom() {
-    // Logique réseau future... Pour l'instant, on simule l'entrée dans le salon
-    showScreen('lobby-screen');
-    updateLobbyUI();
+    if (!socket) { alert('⚠️ Serveur introuvable !'); return; }
+
+    const pseudoInput = document.getElementById('pseudo-input').value.trim();
+    const roomInput = document.getElementById('room-input').value.trim().toUpperCase();
+    myGlobalPseudo = pseudoInput !== '' ? pseudoInput : 'Joueur';
+
+    if (roomInput === '') {
+        socket.emit('createRoom', { pseudo: myGlobalPseudo });
+    } else {
+        currentRoom = roomInput;
+        socket.emit('joinRoom', { roomCode: currentRoom, pseudo: myGlobalPseudo });
+    }
+}
+
+// ─── LOBBY ────────────────────────────────────────────────────────────────────
+
+function updateLobbyForLocal() {
+    document.getElementById('lobby-title').innerText = 'CHOOSE MAP';
+    document.getElementById('lobby-subtitle').innerText = 'Sélectionnez le terrain de jeu';
+    document.getElementById('room-code-display').style.display = 'none';
+    document.getElementById('start-btn').style.display = 'block';
+    document.getElementById('start-btn').disabled = false;
+    document.getElementById('settings-host-controls').classList.remove('disabled-for-guest');
+
+    const list = document.getElementById('players-list');
+    const indicator = document.getElementById('player-count-indicator');
+    list.innerHTML = '';
+    const localPlayers = ['Joueur 1 (ZQSD)', 'Joueur 2 (Flèches)', 'Joueur 3 (IJKL)'];
+    indicator.innerText = localPlayers.length;
+    localPlayers.forEach(p => {
+        const li = document.createElement('li');
+        li.innerText = p;
+        list.appendChild(li);
+    });
+}
+
+function updateLobbyForOnline(clients) {
+    const list = document.getElementById('players-list');
+    const indicator = document.getElementById('player-count-indicator');
+    list.innerHTML = '';
+    indicator.innerText = clients.length;
+
+    clients.forEach((client, index) => {
+        const li = document.createElement('li');
+        const color = PLAYER_COLORS[index] || '#fff';
+        const crown = index === 0 ? '👑 ' : `J${index + 1} : `;
+        li.innerHTML = `<span style="color:${color}; font-weight:800">${crown}${client.pseudo}</span>`;
+        list.appendChild(li);
+    });
 }
 
 function returnToLobby() {
     engine.stop();
-    showScreen('lobby-screen');
+    if (gameMode === 'online' && isHost && socket) {
+        socket.emit('requestReturnToLobby', currentRoom);
+    } else if (gameMode === 'local') {
+        showScreen('lobby-screen');
+        updateLobbyForLocal();
+    }
 }
 
 function leaveRoom() {
+    if (gameMode === 'online' && socket) {
+        socket.disconnect();
+        setTimeout(() => socket.connect(), 150);
+        currentRoom = '';
+    }
     showScreen('main-menu');
 }
 
-// --- Cartes ---
+// ─── CARTES ───────────────────────────────────────────────────────────────────
+
 function selectMap(index) {
     currentMapIndex = index;
+    gameSettings.mapIndex = index;
     document.querySelectorAll('.map-card').forEach((card, i) => {
         card.classList.toggle('active', i === index);
     });
+    // Diffuser aux invités si en ligne et hôte
+    if (gameMode === 'online' && isHost && socket) {
+        socket.emit('updateSettings', { roomCode: currentRoom, settings: gameSettings });
+    }
 }
 
-// --- Modale Settings ---
+// ─── MODALE PARAMÈTRES ────────────────────────────────────────────────────────
+
 function openSettingsModal() {
     document.getElementById('settings-modal').classList.remove('hidden');
 }
@@ -70,6 +139,9 @@ function setBuffsSetting(isOn) {
     gameSettings.buffs = isOn;
     document.getElementById('btn-buffs-on').classList.toggle('active', isOn);
     document.getElementById('btn-buffs-off').classList.toggle('active', !isOn);
+    if (gameMode === 'online' && isHost && socket) {
+        socket.emit('updateSettings', { roomCode: currentRoom, settings: gameSettings });
+    }
 }
 
 function setTimeSetting(time) {
@@ -77,26 +149,176 @@ function setTimeSetting(time) {
     [60, 120, 180].forEach(t => {
         document.getElementById(`btn-time-${t}`).classList.toggle('active', t === time);
     });
+    if (gameMode === 'online' && isHost && socket) {
+        socket.emit('updateSettings', { roomCode: currentRoom, settings: gameSettings });
+    }
 }
 
-function updateLobbyUI() {
-    const list = document.getElementById('players-list');
-    const indicator = document.getElementById('player-count-indicator');
-    list.innerHTML = '';
-    
-    // Pour le prototype local, on crée 2 à 4 joueurs par défaut
-    const localPlayers = ['Joueur 1 (ZQSD)', 'Joueur 2 (Flèches)', 'Joueur 3 (IJKL)'];
-    indicator.innerText = localPlayers.length;
-    
-    localPlayers.forEach(p => {
-        const li = document.createElement('li');
-        li.innerText = p;
-        list.appendChild(li);
+// ─── CHAT ─────────────────────────────────────────────────────────────────────
+
+function sendChatMessage() {
+    if (!socket || currentRoom === '') return;
+    const input = document.getElementById('chat-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    socket.emit('sendChat', {
+        room: currentRoom,
+        sender: myPlayerId,
+        pseudo: myGlobalPseudo,
+        text: msg
     });
+    input.value = '';
 }
 
 // ==========================================
-// 3. MOTEUR PHYSIQUE (TAG ENGINE)
+// 3. ÉVÉNEMENTS SOCKET (MODE EN LIGNE)
+// ==========================================
+
+if (socket) {
+
+    socket.on('lobbyJoined', (data) => {
+        isHost = data.isHost;
+        currentRoom = data.roomCode;
+        gameSettings = { ...gameSettings, ...data.settings };
+
+        showScreen('lobby-screen');
+
+        // Code salon affiché
+        const codeDisplay = document.getElementById('room-code-display');
+        codeDisplay.style.display = 'block';
+
+        if (isHost) {
+            document.getElementById('lobby-title').innerText = 'CHOOSE MAP';
+            codeDisplay.innerHTML = `SALON : <strong>${currentRoom}</strong> <span class="host-badge">Vous êtes l'Hôte</span>`;
+            document.getElementById('start-btn').style.display = 'block';
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('settings-host-controls').classList.remove('disabled-for-guest');
+        } else {
+            document.getElementById('lobby-title').innerText = 'EN ATTENTE';
+            codeDisplay.innerHTML = `SALON : <strong>${currentRoom}</strong> <span class="guest-badge">En attente de l'hôte…</span>`;
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('settings-host-controls').classList.add('disabled-for-guest');
+            // Appliquer les settings de l'hôte
+            applySettings(data.settings);
+        }
+
+        // Afficher le chat
+        document.getElementById('chat-section').classList.remove('hidden');
+    });
+
+    socket.on('playersUpdated', (clients) => {
+        updateLobbyForOnline(clients);
+    });
+
+    socket.on('settingsChanged', (settings) => {
+        if (!isHost) {
+            gameSettings = { ...gameSettings, ...settings };
+            applySettings(settings);
+        }
+    });
+
+    socket.on('gameStarted', (data) => {
+        myPlayerId = data.playerNum === 'spectator' ? 'spectator' : Number(data.playerNum);
+        if (data.settings) gameSettings = { ...gameSettings, ...data.settings };
+        
+        showScreen('game-screen');
+        
+        const subtitle = document.getElementById('game-subtitle-online');
+        if (subtitle) {
+            if (myPlayerId === 'spectator') {
+                subtitle.innerText = `SALON ${currentRoom} — SPECTATEUR`;
+            } else {
+                subtitle.innerText = `SALON ${currentRoom} — Joueur ${myPlayerId}`;
+            }
+            subtitle.style.display = 'block';
+        }
+        
+        // En ligne, le moteur reçoit les positions du serveur → pas de start local
+        if (gameMode === 'online') {
+            engine.startOnline();
+        }
+    });
+
+    socket.on('gameUpdate', (data) => {
+        // Mise à jour des positions reçues du serveur
+        engine.updateFromServer(data.players, data.taggerId);
+    });
+
+    socket.on('playerTagged', (data) => {
+        engine.taggerId = data.taggerId;
+        engine.updateHUD();
+    });
+
+    socket.on('returnToLobby', () => {
+        engine.stop();
+        showScreen('lobby-screen');
+        if (isHost) {
+            document.getElementById('start-btn').style.display = 'block';
+            document.getElementById('settings-host-controls').classList.remove('disabled-for-guest');
+            document.getElementById('lobby-title').innerText = 'CHOOSE MAP';
+        } else {
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('settings-host-controls').classList.add('disabled-for-guest');
+            document.getElementById('lobby-title').innerText = 'EN ATTENTE';
+        }
+        document.getElementById('room-code-display').style.display = 'block';
+    });
+
+    socket.on('hostMigrated', () => {
+        isHost = true;
+        document.getElementById('start-btn').style.display = 'block';
+        document.getElementById('settings-host-controls').classList.remove('disabled-for-guest');
+        const codeDisplay = document.getElementById('room-code-display');
+        codeDisplay.innerHTML = `SALON : <strong>${currentRoom}</strong> <span class="host-badge">Vous êtes le nouvel Hôte</span>`;
+        document.getElementById('lobby-title').innerText = 'CHOOSE MAP';
+    });
+
+    socket.on('roomError', (msg) => {
+        alert('❌ ' + msg);
+    });
+
+    socket.on('chatMessage', (data) => {
+        const container = document.getElementById('chat-messages');
+        if (!container) return;
+        const div = document.createElement('div');
+        div.className = 'chat-msg';
+        const color = (data.sender !== 'spectator' && data.sender <= 6)
+            ? PLAYER_COLORS[data.sender - 1]
+            : '#aaa';
+        div.innerHTML = `<span style="color:${color}; font-weight:700">${escapeHtml(data.pseudo)}</span> : ${escapeHtml(data.text)}`;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    });
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function applySettings(settings) {
+    if (settings.mapIndex !== undefined) {
+        selectMap(settings.mapIndex);
+    }
+    if (settings.buffs !== undefined) {
+        document.getElementById('btn-buffs-on').classList.toggle('active', settings.buffs);
+        document.getElementById('btn-buffs-off').classList.toggle('active', !settings.buffs);
+    }
+    if (settings.time !== undefined) {
+        [60, 120, 180].forEach(t => {
+            document.getElementById(`btn-time-${t}`).classList.toggle('active', t === settings.time);
+        });
+    }
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+// ==========================================
+// 4. MOTEUR PHYSIQUE (TAG ENGINE)
 // ==========================================
 
 class TagEngine {
@@ -109,9 +331,9 @@ class TagEngine {
         this.players = [];
         this.platforms = [];
         this.taggerId = null;
-        this.tagCooldown = 0; // Empêche de retoucher immédiatement
+        this.tagCooldown = 0;
+        this.isOnline = false;
         
-        // Constantes physiques
         this.gravity = 0.6;
         this.friction = 0.82;
         this.jumpForce = -13;
@@ -120,23 +342,42 @@ class TagEngine {
         
         this.isRunning = false;
         this.lastTime = 0;
-        
-        // Bind de la boucle
         this.loop = this.loop.bind(this);
     }
 
+    // ─── MODE LOCAL ──────────────────────────────────────────────────────────
     start(mapIndex, playerCount) {
+        this.isOnline = false;
         this.loadMap(mapIndex);
         this.spawnPlayers(playerCount);
-        
-        // Choix du premier chat aléatoire
         this.taggerId = this.players[Math.floor(Math.random() * this.players.length)].id;
-        
         this.isRunning = true;
         this.lastTime = performance.now();
         requestAnimationFrame(this.loop);
-        
         this.updateHUD();
+    }
+
+    // ─── MODE EN LIGNE ────────────────────────────────────────────────────────
+    startOnline() {
+        this.isOnline = true;
+        this.loadMap(gameSettings.mapIndex || 0);
+        this.players = [];
+        this.isRunning = true;
+        this.lastTime = performance.now();
+        requestAnimationFrame(this.loop);
+    }
+
+    // Mise à jour des positions reçues du serveur
+    updateFromServer(serverPlayers, taggerId) {
+        if (!this.isOnline) return;
+        this.players = serverPlayers;
+        this.taggerId = taggerId;
+        this.updateHUD();
+        // Envoyer les entrées clavier au serveur
+        if (socket && myPlayerId !== 'spectator') {
+            const myInput = inputs[myPlayerId] || { left: false, right: false, jump: false };
+            socket.emit('playerInput', myInput);
+        }
     }
 
     stop() {
@@ -145,27 +386,23 @@ class TagEngine {
 
     loadMap(index) {
         this.platforms = [];
-        // Bordures de l'écran (Murs invisibles ou visibles)
-        this.platforms.push({ x: -50, y: 0, w: 50, h: this.height }); // Mur Gauche
-        this.platforms.push({ x: this.width, y: 0, w: 50, h: this.height }); // Mur Droit
-        this.platforms.push({ x: 0, y: this.height - 40, w: this.width, h: 40 }); // Sol principal
-        
+        this.platforms.push({ x: -50, y: 0, w: 50, h: this.height });
+        this.platforms.push({ x: this.width, y: 0, w: 50, h: this.height });
+        this.platforms.push({ x: 0, y: this.height - 40, w: this.width, h: 40 });
+
         if (index === 0) {
-            // Map 0 : Forêt (Classique)
             this.platforms.push({ x: 150, y: 400, w: 200, h: 20 });
             this.platforms.push({ x: 650, y: 400, w: 200, h: 20 });
             this.platforms.push({ x: 400, y: 280, w: 200, h: 20 });
             this.platforms.push({ x: 100, y: 180, w: 150, h: 20 });
             this.platforms.push({ x: 750, y: 180, w: 150, h: 20 });
         } else if (index === 1) {
-            // Map 1 : Hiver (Plateformes espacées)
             this.platforms.push({ x: 200, y: 450, w: 150, h: 20 });
             this.platforms.push({ x: 650, y: 450, w: 150, h: 20 });
             this.platforms.push({ x: 420, y: 350, w: 180, h: 20 });
             this.platforms.push({ x: 200, y: 220, w: 150, h: 20 });
             this.platforms.push({ x: 650, y: 220, w: 150, h: 20 });
         } else if (index === 2) {
-            // Map 2 : Egypte (Pyramide)
             this.platforms.push({ x: 300, y: 450, w: 424, h: 20 });
             this.platforms.push({ x: 380, y: 350, w: 264, h: 20 });
             this.platforms.push({ x: 460, y: 250, w: 104, h: 20 });
@@ -174,73 +411,49 @@ class TagEngine {
 
     spawnPlayers(count) {
         this.players = [];
-        const colors = ['#e63946', '#2196f3', '#2ecc71', '#f4e04d']; // Rouge, Bleu, Vert, Jaune
-        
+        const colors = ['#e63946', '#2196f3', '#2ecc71', '#f4e04d', '#ff4081', '#18ffff'];
+        const pseudos = ['Joueur 1', 'Joueur 2', 'Joueur 3', 'Joueur 4'];
         for (let i = 0; i < count; i++) {
             this.players.push({
                 id: i + 1,
+                pseudo: pseudos[i] || `J${i + 1}`,
                 x: 100 + (i * 200),
                 y: 100,
-                w: 32,
-                h: 32,
-                vx: 0,
-                vy: 0,
+                w: 32, h: 32,
+                vx: 0, vy: 0,
                 color: colors[i],
                 onGround: false
             });
         }
     }
 
-    // Gestion AABB (Axis-Aligned Bounding Box) pour les collisions
+    rectIntersect(r1, r2) {
+        return !(r2.x >= r1.x + r1.w || r2.x + r2.w <= r1.x || r2.y >= r1.y + r1.h || r2.y + r2.h <= r1.y);
+    }
+
     checkCollisions(p) {
         p.onGround = false;
-        
-        // 1. Appliquer X et vérifier collisions X
         p.x += p.vx;
         for (let plat of this.platforms) {
             if (this.rectIntersect(p, plat)) {
-                if (p.vx > 0) { // Touche le côté gauche du mur
-                    p.x = plat.x - p.w;
-                    p.vx = 0;
-                } else if (p.vx < 0) { // Touche le côté droit du mur
-                    p.x = plat.x + plat.w;
-                    p.vx = 0;
-                }
+                if (p.vx > 0) { p.x = plat.x - p.w; p.vx = 0; }
+                else if (p.vx < 0) { p.x = plat.x + plat.w; p.vx = 0; }
             }
         }
-        
-        // 2. Appliquer Y et vérifier collisions Y
         p.y += p.vy;
         for (let plat of this.platforms) {
             if (this.rectIntersect(p, plat)) {
-                if (p.vy > 0) { // Tombe sur le sol
-                    p.y = plat.y - p.h;
-                    p.vy = 0;
-                    p.onGround = true;
-                } else if (p.vy < 0) { // Tape le plafond
-                    p.y = plat.y + plat.h;
-                    p.vy = 0;
-                }
+                if (p.vy > 0) { p.y = plat.y - p.h; p.vy = 0; p.onGround = true; }
+                else if (p.vy < 0) { p.y = plat.y + plat.h; p.vy = 0; }
             }
         }
-    }
-
-    rectIntersect(r1, r2) {
-        return !(r2.x >= r1.x + r1.w || 
-                 r2.x + r2.w <= r1.x || 
-                 r2.y >= r1.y + r1.h || 
-                 r2.y + r2.h <= r1.y);
     }
 
     loop(timestamp) {
         if (!this.isRunning) return;
-        
-        const delta = timestamp - this.lastTime;
         this.lastTime = timestamp;
-
-        this.updatePhysics();
+        if (!this.isOnline) this.updatePhysics();
         this.draw();
-        
         requestAnimationFrame(this.loop);
     }
 
@@ -249,44 +462,27 @@ class TagEngine {
 
         for (let p of this.players) {
             let input = inputs[p.id] || { left: false, right: false, jump: false };
-            
-            // Entrées horizontales
             if (input.left) p.vx -= this.moveSpeed;
             if (input.right) p.vx += this.moveSpeed;
-            
-            // Friction et Limite de vitesse
             p.vx *= this.friction;
             if (p.vx > this.maxSpeed) p.vx = this.maxSpeed;
             if (p.vx < -this.maxSpeed) p.vx = -this.maxSpeed;
-            
-            // Gravité et Saut
             p.vy += this.gravity;
-            if (input.jump && p.onGround) {
-                p.vy = this.jumpForce;
-            }
-            
-            // Résolution des collisions
+            if (input.jump && p.onGround) p.vy = this.jumpForce;
             this.checkCollisions(p);
-            
-            // Bloquer au plafond de l'écran par sécurité
             if (p.y < 0) { p.y = 0; p.vy = 0; }
         }
-
-        // Vérification de la mécanique de Tag (Toucher)
         this.checkTagging();
     }
 
     checkTagging() {
-        if (this.tagCooldown > 0) return; // En pause
-        
+        if (this.tagCooldown > 0) return;
         const tagger = this.players.find(p => p.id === this.taggerId);
         if (!tagger) return;
-
         for (let p of this.players) {
             if (p.id !== tagger.id && this.rectIntersect(tagger, p)) {
-                // TAG ! Transfert du rôle
                 this.taggerId = p.id;
-                this.tagCooldown = 60; // 1 seconde d'invincibilité à 60fps
+                this.tagCooldown = 60;
                 this.updateHUD();
                 break;
             }
@@ -294,34 +490,39 @@ class TagEngine {
     }
 
     draw() {
-        // Effacer l'écran (fond bleu ciel pour l'instant)
         this.ctx.fillStyle = '#4facfe';
         this.ctx.fillRect(0, 0, this.width, this.height);
-        
-        // Dessiner les plateformes
+
         this.ctx.fillStyle = '#2c3e50';
         for (let plat of this.platforms) {
             this.ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
         }
-        
-        // Dessiner les joueurs
+
         for (let p of this.players) {
+            // Corps du joueur
             this.ctx.fillStyle = p.color;
             this.ctx.fillRect(p.x, p.y, p.w, p.h);
-            
-            // Ajouter une bordure noire pour le style
             this.ctx.strokeStyle = '#000';
             this.ctx.lineWidth = 2;
             this.ctx.strokeRect(p.x, p.y, p.w, p.h);
-            
-            // Si c'est le chat, dessiner le triangle rouge au-dessus de sa tête
-            if (p.id === this.taggerId) {
+
+            // Pseudo au-dessus
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = '10px Outfit, sans-serif';
+            this.ctx.textAlign = 'center';
+            const label = p.pseudo || (this.isOnline ? p.id : `J${p.id}`);
+            this.ctx.fillText(label, p.x + p.w / 2, p.y - 18);
+
+            // Triangle rouge pour le chat
+            const isTagged = this.isOnline ? (p.id === this.taggerId) : (p.id === this.taggerId);
+            if (isTagged) {
                 this.ctx.fillStyle = '#ff0000';
                 this.ctx.beginPath();
-                this.ctx.moveTo(p.x + p.w / 2, p.y - 15); // Pointe haute
-                this.ctx.lineTo(p.x + p.w / 2 - 10, p.y - 5); // Bas gauche
-                this.ctx.lineTo(p.x + p.w / 2 + 10, p.y - 5); // Bas droite
+                this.ctx.moveTo(p.x + p.w / 2, p.y - 28);
+                this.ctx.lineTo(p.x + p.w / 2 - 10, p.y - 18);
+                this.ctx.lineTo(p.x + p.w / 2 + 10, p.y - 18);
                 this.ctx.fill();
+                this.ctx.strokeStyle = '#000';
                 this.ctx.stroke();
             }
         }
@@ -329,18 +530,21 @@ class TagEngine {
 
     updateHUD() {
         const hud = document.getElementById('tagger-indicator');
-        if(hud) {
-            hud.innerText = `CHAT : JOUEUR ${this.taggerId}`;
-            // Mettre la couleur du texte à la couleur du joueur
-            const color = this.players.find(p => p.id === this.taggerId)?.color || '#fff';
-            hud.style.color = color;
-            hud.style.textShadow = '2px 2px 0 #000';
+        if (!hud) return;
+        const tagger = this.players.find(p => p.id === this.taggerId);
+        if (tagger) {
+            const name = tagger.pseudo || (this.isOnline ? tagger.id : `Joueur ${tagger.id}`);
+            hud.innerText = `CHAT : ${name}`;
+            hud.style.color = tagger.color || '#fff';
+        } else {
+            hud.innerText = `CHAT : —`;
         }
+        hud.style.textShadow = '2px 2px 0 #000';
     }
 }
 
 // ==========================================
-// 4. GESTION DES ENTRÉES CLAVIER (MULTIPLAYEUR LOCAL)
+// 5. ENTRÉES CLAVIER (LOCAL MULTIJOUEUR)
 // ==========================================
 
 const inputs = {
@@ -351,48 +555,46 @@ const inputs = {
 
 window.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
-    // Joueur 1 : Z Q S D
     if (key === 'q') inputs[1].left = true;
     if (key === 'd') inputs[1].right = true;
     if (key === 'z') inputs[1].jump = true;
-    
-    // Joueur 2 : Flèches
     if (e.key === 'ArrowLeft') inputs[2].left = true;
     if (e.key === 'ArrowRight') inputs[2].right = true;
     if (e.key === 'ArrowUp') inputs[2].jump = true;
-    
-    // Joueur 3 : I J K L
     if (key === 'j') inputs[3].left = true;
     if (key === 'l') inputs[3].right = true;
     if (key === 'i') inputs[3].jump = true;
+
+    // Chat : Entrée pour envoyer
+    if (e.key === 'Enter' && document.activeElement.id === 'chat-input') {
+        sendChatMessage();
+    }
 });
 
 window.addEventListener('keyup', (e) => {
     const key = e.key.toLowerCase();
-    // Joueur 1
     if (key === 'q') inputs[1].left = false;
     if (key === 'd') inputs[1].right = false;
     if (key === 'z') inputs[1].jump = false;
-    
-    // Joueur 2
     if (e.key === 'ArrowLeft') inputs[2].left = false;
     if (e.key === 'ArrowRight') inputs[2].right = false;
     if (e.key === 'ArrowUp') inputs[2].jump = false;
-    
-    // Joueur 3
     if (key === 'j') inputs[3].left = false;
     if (key === 'l') inputs[3].right = false;
     if (key === 'i') inputs[3].jump = false;
 });
 
 // ==========================================
-// 5. INITIALISATION DU JEU
+// 6. DÉMARRAGE DU JEU
 // ==========================================
 
 let engine = new TagEngine('game-canvas');
 
 function startGame() {
-    showScreen('game-screen');
-    // On lance la partie avec la carte sélectionnée et 3 joueurs pour tester le clavier
-    engine.start(currentMapIndex, 3);
+    if (gameMode === 'local') {
+        showScreen('game-screen');
+        engine.start(currentMapIndex, 3);
+    } else if (gameMode === 'online' && isHost && socket) {
+        socket.emit('requestStartGame', { roomCode: currentRoom });
+    }
 }
