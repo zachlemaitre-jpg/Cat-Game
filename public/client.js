@@ -567,8 +567,7 @@ class TagEngine {
                 state = (Math.floor(Date.now() / 200) % 2 === 0) ? 'w1' : 'w2';
             }
 
-            // Construction de la clé :
-            // Si immo ou jump, pas de suffixe _L ou _R
+            // Construction de la clé : si immo ou jump, pas de suffixe _L ou _R
             let key = (state === 'immo' || state === 'jump') ? state : `${state}_${dir}`;
             
             // Si c'est le tagger (loup/chat), on ajoute le suffixe _cat
@@ -584,15 +583,17 @@ class TagEngine {
                 this.ctx.fillRect(p.x, p.y, p.w, p.h);
             }
 
-            // 4. Triangle retourné au-dessus de la tête
-            let centerX = p.x + p.w / 2;
-            this.ctx.fillStyle = p.color; // Couleur du triangle = couleur du joueur
-            this.ctx.beginPath();
-            this.ctx.moveTo(centerX, p.y - 5);      // Pointe en bas
-            this.ctx.lineTo(centerX - 6, p.y - 15); // Sommet gauche
-            this.ctx.lineTo(centerX + 6, p.y - 15); // Sommet droit
-            this.ctx.closePath();
-            this.ctx.fill();
+            // 4. Triangle blanc retourné uniquement au-dessus du "Chat" (tagger)
+            if (p.id === this.taggerId) {
+                let centerX = p.x + p.w / 2;
+                this.ctx.fillStyle = '#ffffff'; // Blanc
+                this.ctx.beginPath();
+                this.ctx.moveTo(centerX, p.y - 5);      // Pointe en bas
+                this.ctx.lineTo(centerX - 6, p.y - 15); // Sommet gauche
+                this.ctx.lineTo(centerX + 6, p.y - 15); // Sommet droit
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
         }
     }
 
