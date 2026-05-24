@@ -64,13 +64,31 @@ function updateLobbyForLocal() {
     document.getElementById('start-btn').style.display = 'block';
     document.getElementById('start-btn').disabled = false;
     document.getElementById('settings-host-controls').classList.remove('disabled-for-guest');
+    
+    // Afficher le sélecteur de joueurs uniquement en local
+    const playerCountContainer = document.getElementById('local-player-count-container');
+    if (playerCountContainer) playerCountContainer.style.display = 'block';
+
+    // Lire le nombre de joueurs choisi (par défaut 3)
+    const selectEl = document.getElementById('local-player-select');
+    const count = selectEl ? parseInt(selectEl.value) : 3;
 
     const list = document.getElementById('players-list');
     const indicator = document.getElementById('player-count-indicator');
     list.innerHTML = '';
-    const localPlayers = ['Joueur 1 (ZQSD)', 'Joueur 2 (Flèches)', 'Joueur 3 (IJKL)'];
-    indicator.innerText = localPlayers.length;
-    localPlayers.forEach(p => {
+    
+    // Créer la liste des joueurs selon le nombre choisi
+    const allLocalPlayers = [
+        'Joueur 1 (ZQSD)', 
+        'Joueur 2 (Flèches)', 
+        'Joueur 3 (IJKL)', 
+        'Joueur 4 (Pavé Numérique)'
+    ];
+    
+    const activePlayers = allLocalPlayers.slice(0, count);
+    indicator.innerText = activePlayers.length;
+    
+    activePlayers.forEach(p => {
         const li = document.createElement('li');
         li.innerText = p;
         list.appendChild(li);
@@ -78,6 +96,10 @@ function updateLobbyForLocal() {
 }
 
 function updateLobbyForOnline(clients) {
+    // Masquer le sélecteur de joueurs locaux
+    const playerCountContainer = document.getElementById('local-player-count-container');
+    if (playerCountContainer) playerCountContainer.style.display = 'none';
+
     const list = document.getElementById('players-list');
     const indicator = document.getElementById('player-count-indicator');
     list.innerHTML = '';
@@ -593,7 +615,11 @@ let engine = new TagEngine('game-canvas');
 function startGame() {
     if (gameMode === 'local') {
         showScreen('game-screen');
-        engine.start(currentMapIndex, 3);
+        // Lire le nombre choisi
+        const selectEl = document.getElementById('local-player-select');
+        const count = selectEl ? parseInt(selectEl.value) : 3;
+        // Lancer le moteur avec le bon nombre de joueurs
+        engine.start(currentMapIndex, count);
     } else if (gameMode === 'online' && isHost && socket) {
         socket.emit('requestStartGame', { roomCode: currentRoom });
     }

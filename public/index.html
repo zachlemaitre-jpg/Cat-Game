@@ -87,6 +87,15 @@
             </div>
 
             <div class="actions-panel" id="settings-host-controls">
+                
+                <div id="local-player-count-container" style="margin-bottom: 10px;">
+                    <select id="local-player-select" class="btn" style="width: 100%; text-align: center; background: rgba(255,255,255,0.9); color: #222;" onchange="updateLobbyForLocal()">
+                        <option value="2">2 JOUEURS</option>
+                        <option value="3" selected>3 JOUEURS</option>
+                        <option value="4">4 JOUEURS</option>
+                    </select>
+                </div>
+
                 <button class="btn settings-trigger-btn" onclick="openSettingsModal()">GAME SETTINGS</button>
                 <button id="start-btn" class="btn success start-game-btn" onclick="startGame()">LANCER LA PARTIE</button>
                 <button class="btn back-btn" onclick="leaveRoom()">QUITTER</button>
