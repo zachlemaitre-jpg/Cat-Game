@@ -4,20 +4,17 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const path = require('path');
 
-// Servir les fichiers statiques (HTML, CSS, JS client) depuis le dossier 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Stockage global des salons en mémoire
 let rooms = {};
 
-// Configuration géométrique des niveaux (les mêmes coordonnées que sur le client)
+// Configuration géométrique des niveaux
 const MAPS = [
     {
-        // Map 0 : Forêt
         platforms: [
             { x: -50, y: 0, w: 50, h: 576 },
             { x: 1024, y: 0, w: 50, h: 576 },
-            { x: 0, y: 536, w: 1024, h: 40 }, // Sol principal ajusté pour 1024x576
+            { x: 0, y: 536, w: 1024, h: 40 },
             { x: 150, y: 400, w: 200, h: 20 },
             { x: 650, y: 400, w: 200, h: 20 },
             { x: 412, y: 280, w: 200, h: 20 },
@@ -26,7 +23,6 @@ const MAPS = [
         ]
     },
     {
-        // Map 1 : Hiver
         platforms: [
             { x: -50, y: 0, w: 50, h: 576 },
             { x: 1024, y: 0, w: 50, h: 576 },
@@ -39,7 +35,6 @@ const MAPS = [
         ]
     },
     {
-        // Map 2 : Égypte
         platforms: [
             { x: -50, y: 0, w: 50, h: 576 },
             { x: 1024, y: 0, w: 50, h: 576 },
@@ -53,144 +48,161 @@ const MAPS = [
 
 const COLORS = ['#e63946', '#2196f3', '#2ecc71', '#f4e04d', '#ff4081', '#18ffff'];
 
-io.on('connection', (socket) => {
-    console.log('🟢 Nouveau joueur connecté :', socket.id);
-
-    // 1. CRÉATION OU REJOINDRE UN SALON
-    socket.on('joinOrCreateRoom', (data) => {
-        let roomCode = data.roomCode ? data.roomCode.toUpperCase().trim() : '';
-        const pseudo = data.pseudo || 'Joueur';
-
-        // Si aucun code n'est fourni, on génère un salon unique
-        if (!roomCode) {
-            do {
-                roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-            } while (rooms[roomCode]);
-
-            rooms[roomCode] = {
-                code: roomCode,
-                players: {},
-                settings: { mapIndex: 0, buffs: true, time: 120 },
-                isPlaying: false,
-                taggerId: null,
-                tagCooldown: 0,
-                gameInterval: null,
-                lastActivity: Date.now()
-            };
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function findRoomBySocket(socketId) {
+    for (const roomCode in rooms) {
+        if (rooms[roomCode].clients.find(c => c.id === socketId)) {
+            return { roomCode, room: rooms[roomCode] };
         }
+    }
+    return null;
+}
 
+// ─── Socket Events ────────────────────────────────────────────────────────────
+io.on('connection', (socket) => {
+    console.log('🟢 Connexion:', socket.id);
+
+    // 1. CRÉER UN NOUVEAU SALON
+    socket.on('createRoom', (data) => {
+        const pseudo = (data && data.pseudo) ? data.pseudo.trim() : 'Hôte';
+        let roomCode;
+        while (rooms[roomCode = Math.random().toString(36).substring(2, 8).toUpperCase()]);
+
+        rooms[roomCode] = {
+            clients: [{ id: socket.id, pseudo }],
+            settings: { mapIndex: 0, buffs: true, time: 120 },
+            isPlaying: false,
+            taggerId: null,
+            tagCooldown: 0,
+            gameInterval: null,
+            lastActivity: Date.now()
+        };
+
+        socket.join(roomCode);
+        socket.emit('lobbyJoined', {
+            roomCode,
+            isHost: true,
+            settings: rooms[roomCode].settings
+        });
+        io.to(roomCode).emit('playersUpdated', rooms[roomCode].clients);
+    });
+
+    // 2. REJOINDRE UN SALON EXISTANT
+    socket.on('joinRoom', (data) => {
+        const roomCode = (data.roomCode || '').toUpperCase().trim();
+        const pseudo = (data.pseudo || 'Joueur').trim();
         const room = rooms[roomCode];
+
         if (!room) {
             socket.emit('roomError', 'Salon introuvable.');
             return;
         }
-
-        if (room.isPlaying) {
-            socket.emit('roomError', 'La partie a déjà commencé dans ce salon.');
-            return;
-        }
-
-        if (Object.keys(room.players).length >= 6) {
+        if (room.clients.length >= 6) {
             socket.emit('roomError', 'Le salon est complet (max 6 joueurs).');
             return;
         }
 
-        // Configuration réseau initiale du joueur
-        const playerIndex = Object.keys(room.players).length;
-        room.players[socket.id] = {
-            id: socket.id,
-            pseudo: pseudo,
-            color: COLORS[playerIndex] || '#ffffff',
-            x: 100 + (playerIndex * 140),
-            y: 100,
-            w: 32,
-            h: 32,
-            vx: 0,
-            vy: 0,
-            onGround: false,
-            isHost: playerIndex === 0,
-            inputs: { left: false, right: false, jump: false }
-        };
+        // Éviter les doublons (reconnexion)
+        if (!room.clients.find(c => c.id === socket.id)) {
+            room.clients.push({ id: socket.id, pseudo });
+        }
 
         socket.join(roomCode);
         room.lastActivity = Date.now();
+        const isHost = room.clients[0].id === socket.id;
 
-        // Réponse immédiate au client qui se connecte
-        socket.emit('roomJoined', {
-            roomCode: roomCode,
-            myId: socket.id,
-            isHost: room.players[socket.id].isHost,
-            settings: room.settings
+        socket.emit('lobbyJoined', { roomCode, isHost, settings: room.settings });
+        io.to(roomCode).emit('playersUpdated', room.clients);
+
+        // Si la partie est déjà en cours → mode spectateur
+        if (room.isPlaying) {
+            const client = room.clients.find(c => c.id === socket.id);
+            if (client) client.playerNum = 'spectator';
+            socket.emit('gameStarted', { playerNum: 'spectator', settings: room.settings });
+        }
+    });
+
+    // 3. MISE À JOUR DES PARAMÈTRES (hôte uniquement)
+    socket.on('updateSettings', (data) => {
+        const room = rooms[data.roomCode];
+        if (room && room.clients[0].id === socket.id) {
+            room.settings = { ...room.settings, ...data.settings };
+            room.lastActivity = Date.now();
+            socket.to(data.roomCode).emit('settingsChanged', room.settings);
+        }
+    });
+
+    // 4. LANCER LA PARTIE (hôte uniquement)
+    socket.on('requestStartGame', (data) => {
+        const room = rooms[data.roomCode];
+        if (!room || room.clients[0].id !== socket.id || room.isPlaying) return;
+
+        room.isPlaying = true;
+        room.clients.forEach((client, index) => {
+            const role = index < 6 ? index + 1 : 'spectator';
+            client.playerNum = role;
+            io.to(client.id).emit('gameStarted', { playerNum: role, settings: room.settings });
         });
 
-        // Mise à jour de la liste des joueurs pour tout le monde dans le salon
-        io.to(roomCode).emit('playersUpdated', Object.values(room.players));
+        startGameServer(data.roomCode);
     });
 
-    // 2. RÉCEPTION DES ENTRÉES CLAVIER EN TEMPS RÉEL
+    // 5. ENTRÉES CLAVIER TEMPS RÉEL (mode en ligne)
     socket.on('playerInput', (inputs) => {
-        for (const roomCode in rooms) {
-            const room = rooms[roomCode];
-            if (room.players[socket.id]) {
-                room.players[socket.id].inputs = inputs;
-                room.lastActivity = Date.now();
-                break;
+        const found = findRoomBySocket(socket.id);
+        if (found && found.room.isPlaying) {
+            const player = found.room.clients.find(c => c.id === socket.id);
+            if (player && player.serverPlayer) {
+                player.serverPlayer.inputs = inputs;
+                found.room.lastActivity = Date.now();
             }
         }
     });
 
-    // 3. MISE À JOUR DES PARAMÈTRES (Hôte uniquement)
-    socket.on('updateSettings', (newSettings) => {
-        for (const roomCode in rooms) {
-            const room = rooms[roomCode];
-            if (room.players[socket.id] && room.players[socket.id].isHost) {
-                room.settings = { ...room.settings, ...newSettings };
-                room.lastActivity = Date.now();
-                // Diffuser les nouveaux réglages aux autres joueurs
-                socket.to(roomCode).emit('settingsUpdated', room.settings);
-                break;
+    // 6. RETOUR AU LOBBY (hôte uniquement)
+    socket.on('requestReturnToLobby', (roomCode) => {
+        const room = rooms[roomCode];
+        if (room && room.clients[0].id === socket.id) {
+            room.isPlaying = false;
+            if (room.gameInterval) {
+                clearInterval(room.gameInterval);
+                room.gameInterval = null;
             }
+            io.to(roomCode).emit('returnToLobby');
         }
     });
 
-    // 4. DEMANDE DE LANCEMENT DE LA PARTIE (Hôte uniquement)
-    socket.on('requestStartGame', () => {
-        for (const roomCode in rooms) {
-            const room = rooms[roomCode];
-            if (room.players[socket.id] && room.players[socket.id].isHost && !room.isPlaying) {
-                startGameServer(roomCode);
-                break;
-            }
-        }
+    // 7. CHAT
+    socket.on('sendChat', (data) => {
+        io.to(data.room).emit('chatMessage', {
+            sender: data.sender,
+            pseudo: data.pseudo,
+            text: data.text
+        });
     });
 
-    // 5. GESTION DES DÉCONNEXIONS IMPRÉVUES OU DÉPARTS
+    // 8. DÉCONNEXION
     socket.on('disconnect', () => {
-        console.log('🔴 Déconnexion du joueur :', socket.id);
+        console.log('🔴 Déconnexion:', socket.id);
         for (const roomCode in rooms) {
             const room = rooms[roomCode];
-            if (room.players[socket.id]) {
-                const wasHost = room.players[socket.id].isHost;
-                delete room.players[socket.id];
+            const index = room.clients.findIndex(c => c.id === socket.id);
+            if (index !== -1) {
+                const wasHost = index === 0;
+                room.clients.splice(index, 1);
 
-                // Si le salon se vide, on le supprime de la mémoire
-                if (Object.keys(room.players).length === 0) {
+                if (room.clients.length === 0) {
                     if (room.gameInterval) clearInterval(room.gameInterval);
                     delete rooms[roomCode];
                 } else {
-                    // Si l'hôte est parti, on transmet le rôle au joueur suivant
                     if (wasHost) {
-                        const nextHostId = Object.keys(room.players)[0];
-                        room.players[nextHostId].isHost = true;
-                        io.to(nextHostId).emit('hostMigrated');
+                        io.to(room.clients[0].id).emit('hostMigrated');
                     }
-                    
-                    // Notifier le reste du salon
-                    io.to(roomCode).emit('playersUpdated', Object.values(room.players));
-                    
-                    // Si le loup quitte en pleine partie, on réassigne le rôle au hasard
+                    io.to(roomCode).emit('playersUpdated', room.clients);
+
+                    // Si le loup quitte en pleine partie → réassigner
                     if (room.isPlaying && room.taggerId === socket.id) {
-                        room.taggerId = Object.keys(room.players)[0];
+                        room.taggerId = room.clients[0].id;
                         room.tagCooldown = 60;
                         io.to(roomCode).emit('playerTagged', { taggerId: room.taggerId });
                     }
@@ -202,67 +214,61 @@ io.on('connection', (socket) => {
 });
 
 // ==========================================================================
-// MOTEUR PHYSIQUE TEMPS RÉEL DU SERVEUR (BOUCLE FIXE 60 FPS)
+// MOTEUR PHYSIQUE SERVEUR (60 FPS)
 // ==========================================================================
 function startGameServer(roomCode) {
     const room = rooms[roomCode];
-    room.isPlaying = true;
 
-    const pIds = Object.keys(room.players);
-    // Assigner le premier chat (le loup) au hasard
+    const pIds = room.clients.map(c => c.id);
     room.taggerId = pIds[Math.floor(Math.random() * pIds.length)];
-    room.tagCooldown = 90; // Temps d'attente initial (1.5 seconde de répit)
+    room.tagCooldown = 90;
 
-    // Reset des coordonnées de départ sur le sol
-    pIds.forEach((id, index) => {
-        room.players[id].x = 150 + (index * 130);
-        room.players[id].y = 450;
-        room.players[id].vx = 0;
-        room.players[id].vy = 0;
-        room.players[id].onGround = false;
+    // Initialiser les objets joueurs serveur sur chaque client
+    room.clients.forEach((client, index) => {
+        client.serverPlayer = {
+            id: client.id,
+            pseudo: client.pseudo,
+            color: COLORS[index] || '#ffffff',
+            x: 150 + (index * 130),
+            y: 450,
+            w: 32,
+            h: 32,
+            vx: 0,
+            vy: 0,
+            onGround: false,
+            inputs: { left: false, right: false, jump: false }
+        };
     });
 
-    // Envoyer le signal de départ avec l'état initialisé
     io.to(roomCode).emit('gameStarted', {
         taggerId: room.taggerId,
-        players: Object.values(room.players)
+        players: room.clients.map(c => c.serverPlayer)
     });
 
-    // Constantes physiques de déplacement
-    const gravity = 0.6;
-    const friction = 0.82;
-    const jumpForce = -13;
-    const moveSpeed = 1.2;
-    const maxSpeed = 8;
+    const gravity = 0.6, friction = 0.82, jumpForce = -13, moveSpeed = 1.2, maxSpeed = 8;
     const platforms = MAPS[room.settings.mapIndex].platforms;
 
-    // Lancement de l'intervalle d'actualisation physique (Tick de calcul)
     room.gameInterval = setInterval(() => {
         if (!room.isPlaying) return;
-
         if (room.tagCooldown > 0) room.tagCooldown--;
 
-        const playerList = Object.values(room.players);
+        const players = room.clients
+            .filter(c => c.serverPlayer)
+            .map(c => c.serverPlayer);
 
-        // 1. Mise à jour de la vélocité et des positions de chaque joueur
-        playerList.forEach(p => {
+        players.forEach(p => {
             if (p.inputs.left) p.vx -= moveSpeed;
             if (p.inputs.right) p.vx += moveSpeed;
-
             p.vx *= friction;
             if (p.vx > maxSpeed) p.vx = maxSpeed;
             if (p.vx < -maxSpeed) p.vx = -maxSpeed;
 
             p.vy += gravity;
-            if (p.inputs.jump && p.onGround) {
-                p.vy = jumpForce;
-            }
+            if (p.inputs.jump && p.onGround) p.vy = jumpForce;
 
-            // Résolution des collisions sur l'axe X (Gauche/Droite)
             p.onGround = false;
             p.x += p.vx;
             for (let plat of platforms) {
-                // Rectangle Intersect Check (AABB)
                 if (!(plat.x >= p.x + p.w || plat.x + plat.w <= p.x || plat.y >= p.y + p.h || plat.y + plat.h <= p.y)) {
                     if (p.vx > 0) p.x = plat.x - p.w;
                     else if (p.vx < 0) p.x = plat.x + plat.w;
@@ -270,36 +276,27 @@ function startGameServer(roomCode) {
                 }
             }
 
-            // Résolution des collisions sur l'axe Y (Haut/Bas)
             p.y += p.vy;
             for (let plat of platforms) {
                 if (!(plat.x >= p.x + p.w || plat.x + plat.w <= p.x || plat.y >= p.y + p.h || plat.y + plat.h <= p.y)) {
-                    if (p.vy > 0) { // Atterrissage
-                        p.y = plat.y - p.h;
-                        p.vy = 0;
-                        p.onGround = true;
-                    } else if (p.vy < 0) { // Choc tête contre plafond
-                        p.y = plat.y + plat.h;
-                        p.vy = 0;
-                    }
+                    if (p.vy > 0) { p.y = plat.y - p.h; p.vy = 0; p.onGround = true; }
+                    else if (p.vy < 0) { p.y = plat.y + plat.h; p.vy = 0; }
                 }
             }
-
-            // Sécurité anti-chute hors-écran en hauteur
             if (p.y < 0) { p.y = 0; p.vy = 0; }
         });
 
-        // 2. Gestion des contacts et transmission du rôle de Chat
+        // Vérification du tag
         if (room.tagCooldown === 0) {
-            const tagger = room.players[room.taggerId];
+            const taggerClient = room.clients.find(c => c.id === room.taggerId);
+            const tagger = taggerClient ? taggerClient.serverPlayer : null;
             if (tagger) {
-                for (let id in room.players) {
-                    if (id !== room.taggerId) {
-                        const p = room.players[id];
-                        // Vérifier si les deux boîtes de collision se superposent
+                for (let client of room.clients) {
+                    if (client.id !== room.taggerId && client.serverPlayer) {
+                        const p = client.serverPlayer;
                         if (!(p.x >= tagger.x + tagger.w || p.x + p.w <= tagger.x || p.y >= tagger.y + tagger.h || p.y + p.h <= tagger.y)) {
-                            room.taggerId = id;
-                            room.tagCooldown = 60; // 1 seconde de répit (cooldown) avant le prochain tag
+                            room.taggerId = client.id;
+                            room.tagCooldown = 60;
                             io.to(roomCode).emit('playerTagged', { taggerId: room.taggerId });
                             break;
                         }
@@ -308,29 +305,28 @@ function startGameServer(roomCode) {
             }
         }
 
-        // 3. Envoi du Snapshot de positions filtrées à tout le monde
         io.to(roomCode).emit('gameUpdate', {
-            players: playerList,
+            players,
             taggerId: room.taggerId
         });
-
     }, 1000 / 60);
 }
 
-// Système de nettoyage automatique des salons fantômes (Inactivité de plus d'une heure)
+// ─── Garbage Collector ────────────────────────────────────────────────────────
+const ONE_HOUR_MS = 3_600_000;
 setInterval(() => {
+    let deleted = 0;
     const now = Date.now();
     for (const roomCode in rooms) {
-        if (now - rooms[roomCode].lastActivity > 3600000) {
-            if (rooms[roomCode].gameInterval) clearInterval(rooms[roomCode].gameInterval);
+        const room = rooms[roomCode];
+        if (room.clients.length === 0 || (room.lastActivity && now - room.lastActivity > ONE_HOUR_MS)) {
+            if (room.gameInterval) clearInterval(room.gameInterval);
             delete rooms[roomCode];
-            console.log(`🧹 Salon inactif supprimé : ${roomCode}`);
+            deleted++;
         }
     }
-}, 600000);
+    if (deleted > 0) console.log(`🧹 GC : ${deleted} salon(s) supprimé(s).`);
+}, 600_000);
 
-// Lancement de l'écoute du serveur
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
-    console.log(`🚀 Serveur actif et en écoute sur le port ${PORT}`);
-});
+http.listen(PORT, () => console.log(`🚀 Serveur actif sur le port ${PORT}`));
