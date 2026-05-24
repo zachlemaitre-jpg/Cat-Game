@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tag Game - Jeu du Loup</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- ==========================================
+       1. MENU DE SÉLECTION DU MODE (LOCAL / ONLINE)
+       ========================================== -->
+    <div id="main-menu" class="screen">
+        <h1 class="title">TAG GAME</h1>
+        <p class="subtitle">Choisissez votre mode de jeu</p>
+        
+        <div class="menu-box mode-selection">
+            <button class="btn primary arcade-btn" onclick="selectMode('local')">MULTIJOUEUR LOCAL<br><span class="btn-desc">(Sur le même écran)</span></button>
+            <button class="btn success arcade-btn" onclick="selectMode('online')">JOUER EN LIGNE<br><span class="btn-desc">(Serveurs distants)</span></button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+       2. ÉCRAN DE CONNEXION (UNIQUEMENT POUR LE MODE EN LIGNE)
+       ========================================== -->
+    <div id="connection-screen" class="screen hidden">
+        <h1 class="title">CONNEXION</h1>
+        <p class="subtitle">Rejoignez ou créez un salon privé</p>
+        
+        <div class="menu-box">
+            <input type="text" id="pseudo-input" placeholder="Ton Pseudo" maxlength="12">
+            <input type="text" id="room-input" placeholder="Code salon (vide = Créer)" maxlength="6">
+            <button class="btn success" onclick="joinOrCreateRoom()">REJOINDRE / CRÉER</button>
+            <button class="btn back-btn" onclick="showScreen('main-menu')">RETOUR</button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+       3. SALON DE JEU (LOBBY) - INTEGRATION DU "CHOOSE MAP"
+       ========================================== -->
+    <div id="lobby-screen" class="screen hidden">
+        <!-- En-tête dynamique (Code salon en ligne ou mention Local) -->
+        <h1 class="title id="lobby-title"">CHOOSE MAP</h1>
+        <p class="subtitle" id="lobby-subtitle">Sélectionnez le terrain de jeu</p>
+
+        <!-- Grille de sélection des cartes (Image 1 de référence) -->
+        <div class="maps-container" id="maps-gallery">
+            <!-- Carte 1 : Forêt / Plaine -->
+            <div class="map-card forest active" onclick="selectMap(0)" data-map-index="0">
+                <div class="map-illustration forest-bg">
+                    <!-- Éléments de décor reproduits en CSS/Sprites -->
+                    <div class="decor tree-1"></div>
+                    <div class="decor tree-2"></div>
+                    <div class="decor floor-line"></div>
+                </div>
+                <div class="map-name">FORÊT</div>
+            </div>
+
+            <!-- Carte 2 : Hiver / Noël -->
+            <div class="map-card winter" onclick="selectMap(1)" data-map-index="1">
+                <div class="map-illustration winter-bg">
+                    <div class="decor snowman"></div>
+                    <div class="decor candy-cane"></div>
+                    <div class="decor ice-tree"></div>
+                    <div class="decor floor-line-winter"></div>
+                </div>
+                <div class="map-name">HIVER</div>
+            </div>
+
+            <!-- Carte 3 : Désert / Égypte -->
+            <div class="map-card desert" onclick="selectMap(2)" data-map-index="2">
+                <div class="map-illustration desert-bg">
+                    <div class="decor sphinx"></div>
+                    <div class="decor cactus"></div>
+                    <div class="decor pyramid"></div>
+                    <div class="decor floor-line-desert"></div>
+                </div>
+                <div class="map-name">ÉGYPTE</div>
+            </div>
+        </div>
+
+        <!-- Section centrale : Liste des joueurs et Actions -->
+        <div class="lobby-layout">
+            <!-- Liste unique des joueurs (2 à 6 joueurs) -->
+            <div class="players-panel card-panel">
+                <h3 class="panel-title">JOUEURS CONNECTÉS (<span id="player-count-indicator">0</span>/6)</h3>
+                <ul id="players-list" class="pixel-list">
+                    <!-- Rempli dynamiquement par JS -->
+                </ul>
+            </div>
+
+            <!-- Boutons de configuration et Lancement -->
+            <div class="actions-panel">
+                <!-- Bouton Ouvrir les Paramètres (Image 1 de référence) -->
+                <button class="btn settings-trigger-btn" onclick="openSettingsModal()">GAME SETTINGS</button>
+                
+                <!-- Bouton Lancer de l'Hôte -->
+                <button id="start-btn" class="btn success start-game-btn" onclick="startGame()">LANCER LA PARTIE</button>
+                
+                <!-- Quitter le salon -->
+                <button class="btn back-btn" onclick="leaveRoom()">QUITTER</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+       4. MODALE DES PARAMÈTRES (Image 2 de référence)
+       ========================================== -->
+    <div id="settings-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <h2 class="modal-title">SETTINGS</h2>
+            
+            <div class="settings-rows-container" id="host-settings-group">
+                <!-- Ligne de configuration des BUFFS -->
+                <div class="setting-row">
+                    <span class="setting-label">BUFFS</span>
+                    <div class="setting-toggle-group">
+                        <button id="btn-buffs-on" class="btn toggle-choice active" onclick="setBuffsSetting(true)">ON</button>
+                        <button id="btn-buffs-off" class="btn toggle-choice" onclick="setBuffsSetting(false)">OFF</button>
+                    </div>
+                </div>
+
+                <!-- Ligne de configuration du TEMPS (TIME) -->
+                <div class="setting-row">
+                    <span class="setting-label">TIME</span>
+                    <div class="setting-toggle-group">
+                        <button id="btn-time-60" class="btn toggle-choice" onclick="setTimeSetting(60)">60</button>
+                        <button id="btn-time-120" class="btn toggle-choice active" onclick="setTimeSetting(120)">120</button>
+                        <button id="btn-time-180" class="btn toggle-choice" onclick="setTimeSetting(180)">180</button>
+                    </div>
+                </div>
+            </div>
+
+            <p class="modal-notice">THE SETTINGS ARE SAVED AUTOMATICALLY</p>
+            
+            <button class="btn close-modal-btn" onclick="closeSettingsModal()">CLOSE</button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+       5. ÉCRAN DE JEU EN CANVAS (2D PLATFORMER VUE DE PROFIL)
+       ========================================= -->
+    <div id="game-screen" class="screen hidden">
+        <div class="game-wrapper">
+            <!-- Canvas adapté au format paysage plateforme 16:9 dynamique -->
+            <canvas id="game-canvas" width="1024" height="576"></canvas>
+
+            <!-- Superposition du HUD en jeu -->
+            <div id="game-hud">
+                <div id="time-left" class="hud-panel">TEMPS : --</div>
+                <div id="tagger-indicator" class="hud-panel alert-panel">CHAT : Personne</div>
+                <div id="game-message"></div>
+            </div>
+        </div>
+
+        <!-- Sidebar de contrôle en jeu -->
+        <div class="game-sidebar">
+            <div class="sidebar-info-panel">
+                <h4>SCORE / ÉTAT</h4>
+                <ul id="game-players-status" class="pixel-list-compact">
+                    <!-- Affichage en temps réel de qui survit ou est chat -->
+                </ul>
+            </div>
+            <button class="btn back-btn" onclick="returnToLobby()">&#x21A9; SALON</button>
+        </div>
+    </div>
+
+    <!-- Script de communication réseau Socket.io -->
+    <script src="/socket.io/socket.io.js"></script>
+    <!-- Moteur et scripts clients modifiés -->
+    <script src="client.js"></script>
+</body>
+</html>
