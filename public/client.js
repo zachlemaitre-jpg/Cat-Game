@@ -82,7 +82,7 @@ function updateLobbyForLocal() {
         'Joueur 1 (ZQSD)', 
         'Joueur 2 (Flèches)', 
         'Joueur 3 (IJKL)', 
-        'Joueur 4 (Pavé Numérique)'
+        'Joueur 4 (TFGH)'
     ];
     
     const activePlayers = allLocalPlayers.slice(0, count);
@@ -572,20 +572,32 @@ class TagEngine {
 const inputs = {
     1: { left: false, right: false, jump: false },
     2: { left: false, right: false, jump: false },
-    3: { left: false, right: false, jump: false }
+    3: { left: false, right: false, jump: false },
+    4: { left: false, right: false, jump: false }
 };
 
 window.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
+    
+    // Joueur 1 : ZQSD
     if (key === 'q') inputs[1].left = true;
     if (key === 'd') inputs[1].right = true;
     if (key === 'z') inputs[1].jump = true;
+    
+    // Joueur 2 : Flèches
     if (e.key === 'ArrowLeft') inputs[2].left = true;
     if (e.key === 'ArrowRight') inputs[2].right = true;
     if (e.key === 'ArrowUp') inputs[2].jump = true;
+    
+    // Joueur 3 : IJKL
     if (key === 'j') inputs[3].left = true;
     if (key === 'l') inputs[3].right = true;
     if (key === 'i') inputs[3].jump = true;
+    
+    // Joueur 4 : TFGH (Nouveau)
+    if (key === 'f') inputs[4].left = true;
+    if (key === 'h') inputs[4].right = true;
+    if (key === 't') inputs[4].jump = true;
 
     // Chat : Entrée pour envoyer
     if (e.key === 'Enter' && document.activeElement.id === 'chat-input') {
@@ -595,15 +607,26 @@ window.addEventListener('keydown', (e) => {
 
 window.addEventListener('keyup', (e) => {
     const key = e.key.toLowerCase();
+    
+    // Joueur 1
     if (key === 'q') inputs[1].left = false;
     if (key === 'd') inputs[1].right = false;
     if (key === 'z') inputs[1].jump = false;
+    
+    // Joueur 2
     if (e.key === 'ArrowLeft') inputs[2].left = false;
     if (e.key === 'ArrowRight') inputs[2].right = false;
     if (e.key === 'ArrowUp') inputs[2].jump = false;
+    
+    // Joueur 3
     if (key === 'j') inputs[3].left = false;
     if (key === 'l') inputs[3].right = false;
     if (key === 'i') inputs[3].jump = false;
+    
+    // Joueur 4
+    if (key === 'f') inputs[4].left = false;
+    if (key === 'h') inputs[4].right = false;
+    if (key === 't') inputs[4].jump = false;
 });
 
 // ==========================================
