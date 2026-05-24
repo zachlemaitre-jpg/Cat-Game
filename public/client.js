@@ -204,21 +204,22 @@ function loadAssets() {
     colors.forEach(color => {
         sprites[color] = {};
         
-        // Chargement des versions normales
-        states.forEach(s => {
-            if (s === 'immo') {
-                sprites[color]['immo'] = new Image();
-                sprites[color]['immo'].src = `assets/${color}_immo.png`;
-                sprites[color]['immo_cat'] = new Image();
-                sprites[color]['immo_cat'].src = `assets/${color}_immo_cat.png`;
-            } else {
-                ['L', 'R'].forEach(dir => {
-                    sprites[color][`${s}_${dir}`] = new Image();
-                    sprites[color][`${s}_${dir}`].src = `assets/${color}_${s}_${dir}.png`;
-                    sprites[color][`${s}_${dir}_cat`] = new Image();
-                    sprites[color][`${s}_${dir}_cat`].src = `assets/${color}_${s}_${dir}_cat.png`;
-                });
-            }
+        // 1. États SANS direction (immo, jump)
+        ['immo', 'jump'].forEach(s => {
+            sprites[color][s] = new Image();
+            sprites[color][s].src = `assets/${color}_${s}.png`;
+            sprites[color][`${s}_cat`] = new Image();
+            sprites[color][`${s}_cat`].src = `assets/${color}_${s}_cat.png`;
+        });
+        
+        // 2. États AVEC direction (w1, w2)
+        ['w1', 'w2'].forEach(s => {
+            ['L', 'R'].forEach(dir => {
+                sprites[color][`${s}_${dir}`] = new Image();
+                sprites[color][`${s}_${dir}`].src = `assets/${color}_${s}_${dir}.png`;
+                sprites[color][`${s}_${dir}_cat`] = new Image();
+                sprites[color][`${s}_${dir}_cat`].src = `assets/${color}_${s}_${dir}_cat.png`;
+            });
         });
     });
 }
