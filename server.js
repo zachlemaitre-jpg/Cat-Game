@@ -236,7 +236,8 @@ function startGameServer(roomCode) {
             vx: 0,
             vy: 0,
             onGround: false,
-            inputs: { left: false, right: false, jump: false }
+            inputs: { left: false, right: false, jump: false },
+            jumpCooldown: 0
         };
     });
 
@@ -245,11 +246,11 @@ function startGameServer(roomCode) {
         players: room.clients.map(c => c.serverPlayer)
     });
 
-    const gravity = 0.4;    // Avant: 0.6 (Plus bas = saut plus planant/lent)
+    const gravity = 0.2;    // Avant: 0.6 (Plus bas = saut plus planant/lent)
     const friction = 0.85;  // Avant: 0.82 (Plus haut = glisse un peu plus à l'arrêt)
     const jumpForce = -10;  // Avant: -13 (Plus proche de 0 = saut moins haut)
-    const moveSpeed = 0.8;  // Avant: 1.2 (Accélération plus douce)
-    const maxSpeed = 5;     // Avant: 8 (Vitesse de course maximale réduite)
+    const moveSpeed = 0.5;  // Avant: 1.2 (Accélération plus douce)
+    const maxSpeed = 3;     // Avant: 8 (Vitesse de course maximale réduite)
     const platforms = MAPS[room.settings.mapIndex].platforms;
 
     room.gameInterval = setInterval(() => {
@@ -261,6 +262,7 @@ function startGameServer(roomCode) {
             .map(c => c.serverPlayer);
 
         players.forEach(p => {
+            if (p.jumpCooldown > 0) p.jumpCooldown--;
             if (p.inputs.left) p.vx -= moveSpeed;
             if (p.inputs.right) p.vx += moveSpeed;
             p.vx *= friction;
@@ -268,8 +270,11 @@ function startGameServer(roomCode) {
             if (p.vx < -maxSpeed) p.vx = -maxSpeed;
 
             p.vy += gravity;
-            if (p.inputs.jump && p.onGround) p.vy = jumpForce;
-
+            
+            if (p.inputs.jump && p.onGround && p.jumpCooldown === 0) {
+                p.vy = jumpForce;
+                p.jumpCooldown = 30; // 30 = 0.5 seconde d'attente (à 60fps)
+            }
             p.onGround = false;
             p.x += p.vx;
             for (let plat of platforms) {
