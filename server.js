@@ -245,7 +245,11 @@ function startGameServer(roomCode) {
         players: room.clients.map(c => c.serverPlayer)
     });
 
-    const gravity = 0.6, friction = 0.82, jumpForce = -13, moveSpeed = 1.2, maxSpeed = 8;
+    const gravity = 0.4;    // Avant: 0.6 (Plus bas = saut plus planant/lent)
+    const friction = 0.85;  // Avant: 0.82 (Plus haut = glisse un peu plus à l'arrêt)
+    const jumpForce = -10;  // Avant: -13 (Plus proche de 0 = saut moins haut)
+    const moveSpeed = 0.8;  // Avant: 1.2 (Accélération plus douce)
+    const maxSpeed = 5;     // Avant: 8 (Vitesse de course maximale réduite)
     const platforms = MAPS[room.settings.mapIndex].platforms;
 
     room.gameInterval = setInterval(() => {
