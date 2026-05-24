@@ -194,32 +194,36 @@ function sendChatMessage() {
 }
 
 // ==========================================
-// 2.5 CHARGEMENT DES SPRITES
+// 2.5 CHARGEMENT AUTOMATIQUE DES SPRITES
 // ==========================================
 const sprites = {};
 const colors = ['blue', 'green', 'red', 'yellow'];
-const directions = ['L', 'R']; // Left et Right
+const states = ['immo', 'w1', 'w2', 'jump'];
 
 function loadAssets() {
     colors.forEach(color => {
-        sprites[color] = {
-            immo: new Image(), immo_cat: new Image(),
-            jump_L: new Image(), jump_R: new Image(), // Séparés par direction
-            jump_cat_L: new Image(), jump_cat_R: new Image(),
-            w1_L: new Image(), w1_R: new Image(),
-            w1_cat_L: new Image(), w1_cat_R: new Image(),
-            w2_L: new Image(), w2_R: new Image(),
-            w2_cat_L: new Image(), w2_cat_R: new Image(),
-            ice: new Image()
-        };
-        // Exemple de chargement pour le bleu (à répéter pour chaque couleur)
-        // Note : assure-toi que tes fichiers correspondent aux noms utilisés ici
-        sprites[color].immo.src = `assets/${color}_immo.png`;
-        sprites[color].w1_L.src = `assets/${color}_w1_L.png`;
-        sprites[color].w1_R.src = `assets/${color}_w1_R.png`; // Pense à créer les versions R si tu les as
-        // ... etc ...
+        sprites[color] = {};
+        
+        // Chargement des versions normales
+        states.forEach(s => {
+            if (s === 'immo') {
+                sprites[color]['immo'] = new Image();
+                sprites[color]['immo'].src = `assets/${color}_immo.png`;
+                sprites[color]['immo_cat'] = new Image();
+                sprites[color]['immo_cat'].src = `assets/${color}_immo_cat.png`;
+            } else {
+                ['L', 'R'].forEach(dir => {
+                    sprites[color][`${s}_${dir}`] = new Image();
+                    sprites[color][`${s}_${dir}`].src = `assets/${color}_${s}_${dir}.png`;
+                    sprites[color][`${s}_${dir}_cat`] = new Image();
+                    sprites[color][`${s}_${dir}_cat`].src = `assets/${color}_${s}_${dir}_cat.png`;
+                });
+            }
+        });
     });
 }
+// Lance le chargement dès que le script est chargé
+loadAssets();
 
 // ==========================================
 // 3. ÉVÉNEMENTS SOCKET (MODE EN LIGNE)
@@ -540,7 +544,7 @@ class TagEngine {
     }
 
     draw() {
-        // 1. Fond du jeu (à adapter selon ton biome actuel)
+        // 1. Fond du jeu
         this.ctx.fillStyle = '#4facfe';
         this.ctx.fillRect(0, 0, this.width, this.height);
 
@@ -550,37 +554,32 @@ class TagEngine {
             this.ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
         }
 
-        // 3. Dessin des joueurs avec sprites
+        // 3. Dessin des joueurs avec leurs sprites spécifiques
         for (let p of this.players) {
             let colorName = colors[p.id - 1] || 'blue';
-            let dir = p.vx >= 0 ? 'R' : 'L'; // Droite ou Gauche selon la vitesse
+            let dir = p.vx >= 0 ? 'R' : 'L';
             let state = 'immo';
 
-            // Logique d'état
             if (!p.onGround) {
                 state = 'jump';
             } else if (Math.abs(p.vx) > 0.5) {
-                // Alterne w1 et w2 toutes les 200ms
                 state = (Math.floor(Date.now() / 200) % 2 === 0) ? 'w1' : 'w2';
             }
 
-            // Construction de la clé pour trouver l'image
+            // Construction dynamique du nom de l'image
             let key = (state === 'immo') ? 'immo' : `${state}_${dir}`;
             if (p.id === this.taggerId) key += '_cat';
 
-            let asset = sprites[colorName][key] || sprites[colorName].immo;
-
-            // Sauvegarde du contexte pour le miroir (si on va à droite)
-            this.ctx.save();
-            if (dir === 'R') {
-                // On inverse horizontalement pour la direction droite
-                this.ctx.scale(-1, 1);
-                this.ctx.drawImage(asset, -p.x - p.w, p.y, p.w, p.h);
-            } else {
+            let asset = sprites[colorName] ? sprites[colorName][key] : null;
+            
+            // Fallback de sécurité si l'image n'est pas encore chargée
+            if (asset && asset.complete) {
                 this.ctx.drawImage(asset, p.x, p.y, p.w, p.h);
+            } else {
+                // Dessin temporaire si l'image manque
+                this.ctx.fillStyle = p.color;
+                this.ctx.fillRect(p.x, p.y, p.w, p.h);
             }
-            this.ctx.restore();
-
             // 4. Dessin du pseudo
             this.ctx.fillStyle = '#fff';
             this.ctx.font = '10px Outfit, sans-serif';
