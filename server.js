@@ -222,6 +222,9 @@ function startGameServer(roomCode) {
     const pIds = room.clients.map(c => c.id);
     room.taggerId = pIds[Math.floor(Math.random() * pIds.length)];
     room.tagCooldown = 90;
+    
+    // NOUVEAU : Initialisation du timer serveur
+    room.lastTimerUpdate = Date.now();
 
     // Initialiser les objets joueurs serveur sur chaque client
     room.clients.forEach((client, index) => {
@@ -246,15 +249,30 @@ function startGameServer(roomCode) {
         players: room.clients.map(c => c.serverPlayer)
     });
 
-    const gravity = 0.2;    // Avant: 0.6 (Plus bas = saut plus planant/lent)
-    const friction = 0.85;  // Avant: 0.82 (Plus haut = glisse un peu plus à l'arrêt)
-    const jumpForce = -10;  // Avant: -13 (Plus proche de 0 = saut moins haut)
-    const moveSpeed = 0.5;  // Avant: 1.2 (Accélération plus douce)
-    const maxSpeed = 3;     // Avant: 8 (Vitesse de course maximale réduite)
+    const gravity = 0.2;    
+    const friction = 0.85;  
+    const jumpForce = -10;  
+    const moveSpeed = 0.5;  
+    const maxSpeed = 3;     
     const platforms = MAPS[room.settings.mapIndex].platforms;
 
     room.gameInterval = setInterval(() => {
         if (!room.isPlaying) return;
+        
+        // --- NOUVEAU : GESTION DU TEMPS CÔTÉ SERVEUR ---
+        const now = Date.now();
+        if (now - room.lastTimerUpdate >= 1000) {
+            room.timeRemaining--;
+            room.lastTimerUpdate = now;
+            
+            if (room.timeRemaining <= 0) {
+                room.isPlaying = false;
+                clearInterval(room.gameInterval);
+                io.to(roomCode).emit('gameOver');
+                return; // Arrête la boucle pour cette frame
+            }
+        }
+
         if (room.tagCooldown > 0) room.tagCooldown--;
 
         const players = room.clients
@@ -316,7 +334,8 @@ function startGameServer(roomCode) {
 
         io.to(roomCode).emit('gameUpdate', {
             players,
-            taggerId: room.taggerId
+            taggerId: room.taggerId,
+            timeRemaining: room.timeRemaining // Envoie le temps au client
         });
     }, 1000 / 60);
 }
