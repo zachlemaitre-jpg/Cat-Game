@@ -169,7 +169,9 @@ function setBuffsSetting(isOn) {
 function setTimeSetting(time) {
     gameSettings.time = time;
     [60, 120, 180].forEach(t => {
-        document.getElementById(`btn-time-${t}`).classList.toggle('active', t === time);
+        // Ajout d'une sécurité au cas où le bouton n'existe pas
+        const btn = document.getElementById(`btn-time-${t}`);
+        if(btn) btn.classList.toggle('active', t === time);
     });
     if (gameMode === 'online' && isHost && socket) {
         socket.emit('updateSettings', { roomCode: currentRoom, settings: gameSettings });
