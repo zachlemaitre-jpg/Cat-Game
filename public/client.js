@@ -169,10 +169,10 @@ function setBuffsSetting(isOn) {
 function setTimeSetting(time) {
     gameSettings.time = time;
     [60, 120, 180].forEach(t => {
-        // Ajout d'une sécurité au cas où le bouton n'existe pas
         const btn = document.getElementById(`btn-time-${t}`);
         if(btn) btn.classList.toggle('active', t === time);
     });
+    // La diffusion socket ne se fait que si on est en ligne
     if (gameMode === 'online' && isHost && socket) {
         socket.emit('updateSettings', { roomCode: currentRoom, settings: gameSettings });
     }
@@ -408,10 +408,18 @@ class TagEngine {
         this.loadMap(mapIndex);
         this.spawnPlayers(playerCount);
         this.taggerId = this.players[Math.floor(Math.random() * this.players.length)].id;
+        
+        // S'assurer que le temps est bien pris en compte
+        this.timeRemaining = gameSettings.time || 120; 
+        this.lastTimerUpdate = Date.now();
+        
         this.isRunning = true;
         this.lastTime = performance.now();
+        
+        // Force l'affichage du timer à 02:00 avant le début de la boucle
+        this.updateHUD(); 
+        
         requestAnimationFrame(this.loop);
-        this.updateHUD();
     }
 
     // ─── MODE EN LIGNE ────────────────────────────────────────────────────────
@@ -515,20 +523,61 @@ class TagEngine {
     }
 
     updatePhysics() {
+        // --- GESTION DU TEMPS EN LOCAL ---
+        if (!this.isOnline) {
+            const now = Date.now();
+            if (now - this.lastTimerUpdate >= 1000) {
+                this.timeRemaining--;
+                this.lastTimerUpdate = now;
+                this.updateHUD();
+                
+                if (this.timeRemaining <= 0) {
+                    this.stop();
+                    const msgHUD = document.getElementById('game-message');
+                    if(msgHUD) {
+                        msgHUD.innerText = "TEMPS ÉCOULÉ !";
+                        msgHUD.style.color = "#fff";
+                        msgHUD.style.display = 'block';
+                    }
+                    setTimeout(() => {
+                        if(msgHUD) msgHUD.style.display = 'none';
+                        returnToLobby();
+                    }, 3000);
+                    return; // Arrête la mise à jour physique car la partie est finie
+                }
+            }
+        }
+        // --- FIN DE LA GESTION DU TEMPS ---
+
         if (this.tagCooldown > 0) this.tagCooldown--;
 
         for (let p of this.players) {
+            if (p.jumpCooldown > 0) p.jumpCooldown--;
+            
             let input = inputs[p.id] || { left: false, right: false, jump: false };
+            
             if (input.left) p.vx -= this.moveSpeed;
             if (input.right) p.vx += this.moveSpeed;
             p.vx *= this.friction;
+            
             if (p.vx > this.maxSpeed) p.vx = this.maxSpeed;
             if (p.vx < -this.maxSpeed) p.vx = -this.maxSpeed;
+            
             p.vy += this.gravity;
-            if (input.jump && p.onGround) p.vy = this.jumpForce;
+            
+            if (input.jump && p.onGround && p.jumpCooldown === 0) {
+                p.vy = this.jumpForce;
+                p.jumpCooldown = 30; // 30 = 0.5 sec d'attente (à 60fps)
+            }
+            
             this.checkCollisions(p);
-            if (p.y < 0) { p.y = 0; p.vy = 0; }
+            
+            if (p.y < 0) { 
+                p.y = 0; 
+                p.vy = 0; 
+            }
         }
+        
         this.checkTagging();
     }
 
