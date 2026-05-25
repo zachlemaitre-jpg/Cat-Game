@@ -487,7 +487,8 @@ class TagEngine {
                 w: 32, h: 32,
                 vx: 0, vy: 0,
                 color: colors[i],
-                onGround: false
+                onGround: false,
+                jumpCooldown: 0 
             });
         }
     }
@@ -649,17 +650,29 @@ class TagEngine {
     }
 
     updateHUD() {
+        // 1. Mise à jour de l'indicateur du loup (chat)
         const hud = document.getElementById('tagger-indicator');
-        if (!hud) return;
-        const tagger = this.players.find(p => p.id === this.taggerId);
-        if (tagger) {
-            const name = tagger.pseudo || (this.isOnline ? tagger.id : `Joueur ${tagger.id}`);
-            hud.innerText = `CHAT : ${name}`;
-            hud.style.color = tagger.color || '#fff';
-        } else {
-            hud.innerText = `CHAT : —`;
+        if (hud) {
+            const tagger = this.players.find(p => p.id === this.taggerId);
+            if (tagger) {
+                const name = tagger.pseudo || (this.isOnline ? tagger.id : `Joueur ${tagger.id}`);
+                hud.innerText = `CHAT : ${name}`;
+                hud.style.color = tagger.color || '#fff';
+            } else {
+                hud.innerText = `CHAT : —`;
+            }
+            hud.style.textShadow = '2px 2px 0 #000';
         }
-        hud.style.textShadow = '2px 2px 0 #000';
+
+        // 2. Mise à jour du chronomètre
+        const timeHud = document.getElementById('time-left');
+        if (timeHud) {
+            // Sécurité si timeRemaining n'est pas encore défini
+            let time = this.timeRemaining !== undefined ? this.timeRemaining : 0; 
+            let minutes = Math.floor(time / 60);
+            let seconds = time % 60;
+            timeHud.innerText = `TEMPS : ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
     }
 }
 
