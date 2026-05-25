@@ -1,18 +1,18 @@
 /* ==========================================================================
    TAG GAME - STYLE.CSS
-   Reconstitution fidèle des maquettes (Teal Blue, Plateformes colorées, Modal Rose)
+   Thème Rétro Pixel Art (Carré, Ombres solides, Police 8-bit)
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
 /* ─── Variables de Thème ─────────────────────────────────────────────────── */
 :root {
-  --bg-blue: #3a92b8;         /* Couleur de fond principale du jeu (Image 1) */
-  --modal-pink: #ff9ebb;      /* Rose de la modale de paramètres (Image 2) */
+  --bg-blue: #3a92b8;         
+  --modal-pink: #ff9ebb;      
   --text-white: #ffffff;
   --dark-slate: #2c3e50;
   
-  /* Couleurs des plateformes (Image 1) */
+  /* Couleurs des plateformes */
   --forest-pink: #ff1c77;
   --forest-grass: #2cd15d;
   --winter-purple: #9086ff;
@@ -31,13 +31,15 @@
 body {
   background-color: var(--bg-blue);
   color: var(--text-white);
-  font-family: 'Outfit', sans-serif;
+  /* Utilisation globale de la police Pixel */
+  font-family: 'Press Start 2P', monospace;
   min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow-x: hidden;
   user-select: none;
+  line-height: 1.4;
 }
 
 .hidden {
@@ -61,125 +63,110 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ─── Titres & Typographie Cartoon ────────────────────────────────────────── */
+/* ─── Titres & Typographie Pixel ────────────────────────────────────────── */
 .title {
-  font-size: clamp(2.5rem, 6vw, 4.5rem);
-  font-weight: 900;
+  font-size: clamp(1.8rem, 5vw, 3rem); /* Réduit car la police est large */
+  font-weight: 400;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
   color: var(--text-white);
   text-align: center;
-  margin-bottom: 5px;
-  text-shadow: none;
+  margin-bottom: 15px;
+  text-shadow: 6px 6px 0px rgba(0,0,0,0.3); /* Ombre portée solide */
 }
 
 .subtitle {
-  font-size: clamp(0.9rem, 2vw, 1.25rem);
-  font-weight: 600;
+  font-size: clamp(0.7rem, 2vw, 0.9rem);
   text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-white);
   margin-bottom: 40px;
   text-align: center;
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
 }
 
 /* ─── Boîtes de Menu Standard ────────────────────────────────────────────── */
 .menu-box {
   background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(4px);
   border: 4px solid var(--text-white);
-  border-radius: 24px;
+  border-radius: 0; /* Tout est carré */
   padding: 40px;
   display: flex;
   flex-direction: column;
   gap: 20px;
   width: 100%;
   max-width: 450px;
-  box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+  box-shadow: 12px 12px 0px rgba(0,0,0,0.3); /* Ombre bloc */
 }
 
-.menu-box input {
+.menu-box input, select {
   padding: 16px 20px;
   border: 4px solid var(--text-white);
-  border-radius: 16px;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.9);
   color: #222;
-  font-family: 'Outfit', sans-serif;
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.8rem;
   outline: none;
   text-transform: uppercase;
-  transition: all 0.2s;
 }
 
 .menu-box input:focus {
   background: #ffffff;
-  box-shadow: 0 0 0 4px rgba(255,255,255,0.4);
+  border-color: #f4e04d;
 }
 
 /* ─── Boutons Arcade / Cartoon ────────────────────────────────────────────── */
 .btn {
-  font-family: 'Outfit', sans-serif;
-  font-weight: 900;
-  font-size: 1.1rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.8rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 16px 32px;
+  padding: 18px 24px;
   border: 4px solid var(--text-white);
-  border-radius: 18px;
+  border-radius: 0;
   cursor: pointer;
   background: transparent;
   color: var(--text-white);
-  transition: transform 0.1s, background 0.2s, box-shadow 0.2s;
+  transition: transform 0.1s, box-shadow 0.1s;
   outline: none;
   text-align: center;
 }
 
-.btn:hover {
-  transform: translateY(-3px);
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.btn:active {
-  transform: translateY(1px);
-}
-
+/* Effets 3D Pixelisés pour les boutons */
 .btn.primary {
   background: #2196f3;
-  box-shadow: 0 6px 0 #1565c0;
+  box-shadow: 6px 6px 0 #1565c0;
 }
-.btn.primary:hover { background: #39a1f4; }
-.btn.primary:active { box-shadow: 0 2px 0 #1565c0; }
+.btn.primary:hover { transform: translate(2px, 2px); box-shadow: 4px 4px 0 #1565c0; }
+.btn.primary:active { transform: translate(6px, 6px); box-shadow: 0px 0px 0 #1565c0; }
 
 .btn.success {
   background: #2cd15d;
-  box-shadow: 0 6px 0 #1b943e;
+  box-shadow: 6px 6px 0 #1b943e;
 }
-.btn.success:hover { background: #42da70; }
-.btn.success:active { box-shadow: 0 2px 0 #1b943e; }
+.btn.success:hover { transform: translate(2px, 2px); box-shadow: 4px 4px 0 #1b943e; }
+.btn.success:active { transform: translate(6px, 6px); box-shadow: 0px 0px 0 #1b943e; }
 
 .btn.back-btn {
   background: #e63946;
   border-color: var(--text-white);
-  box-shadow: 0 6px 0 #b31c27;
+  box-shadow: 6px 6px 0 #b31c27;
 }
-.btn.back-btn:hover { background: #ea525e; }
-.btn.back-btn:active { box-shadow: 0 2px 0 #b31c27; }
+.btn.back-btn:hover { transform: translate(2px, 2px); box-shadow: 4px 4px 0 #b31c27; }
+.btn.back-btn:active { transform: translate(6px, 6px); box-shadow: 0px 0px 0 #b31c27; }
 
 .arcade-btn {
-  font-size: 1.2rem;
+  font-size: 1rem;
   padding: 24px;
-  line-height: 1.3;
+  line-height: 1.5;
 }
 .btn-desc {
-  font-size: 0.75rem;
-  font-weight: 400;
-  opacity: 0.85;
+  font-size: 0.6rem;
+  opacity: 0.9;
   display: block;
-  margin-top: 4px;
+  margin-top: 10px;
 }
 
-/* ─── Sélection des Cartes (Image 1 de référence) ─────────────────────────── */
+/* ─── Sélection des Cartes ─────────────────────────── */
 .maps-container {
   display: flex;
   justify-content: center;
@@ -192,57 +179,56 @@ body {
 .map-card {
   width: 260px;
   cursor: pointer;
-  transition: transform 0.2s, filter 0.2s;
+  transition: transform 0.2s;
 }
 
 .map-card:hover {
-  transform: scale(1.05);
+  transform: translateY(-5px);
 }
 
 .map-card.active {
-  transform: scale(1.08);
-  filter: drop-shadow(0 12px 25px rgba(0,0,0,0.25));
+  transform: translateY(-10px);
 }
 
-/* Dessins des plateformes purement en CSS pour coller au rendu de l'image 1 */
 .map-illustration {
   width: 100%;
   height: 140px;
-  border-radius: 28px;
+  border-radius: 0; /* Cadre carré */
   position: relative;
   overflow: hidden;
-  border: 4px solid transparent;
-  transition: border-color 0.2s;
+  border: 4px solid var(--dark-slate);
+  box-shadow: 8px 8px 0 rgba(0,0,0,0.2);
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .map-card.active .map-illustration {
   border-color: var(--text-white);
+  box-shadow: 12px 12px 0 rgba(255,255,255,0.4);
 }
 
-/* --- Décors Forêt --- */
+/* Décors - On enlève les arrondis des sols pour faire "bloc" */
 .forest-bg { background-color: var(--forest-pink); }
 .floor-line {
   position: absolute; bottom: 0; left: 0; right: 0; height: 35px;
-  background: var(--forest-grass); border-radius: 12px 12px 0 0;
+  background: var(--forest-grass); border-radius: 0;
 }
 .tree-1 {
   position: absolute; bottom: 35px; left: 40px; width: 40px; height: 50px;
-  background: #39d46e; border-radius: 8px; border-bottom: 12px solid #b81454;
+  background: #39d46e; border-bottom: 12px solid #b81454; border-radius: 0;
 }
 .tree-2 {
   position: absolute; bottom: 35px; right: 40px; width: 45px; height: 40px;
-  background: #2cd15d; border-radius: 50%; border-bottom: 12px solid #b81454;
+  background: #2cd15d; border-radius: 0; border-bottom: 12px solid #b81454;
 }
 
-/* --- Décors Hiver --- */
 .winter-bg { background-color: var(--winter-purple); }
 .floor-line-winter {
   position: absolute; bottom: 0; left: 0; right: 0; height: 35px;
-  background: var(--winter-snow); border-radius: 12px 12px 0 0;
+  background: var(--winter-snow); border-radius: 0;
 }
 .snowman {
   position: absolute; bottom: 35px; left: 35px; width: 24px; height: 36px;
-  background: #fff; border-radius: 50% 50% 40% 40%;
+  background: #fff; border-radius: 0; /* Bonhomme de neige cubique ! */
 }
 .snowman::before {
   content: ''; position: absolute; top: -6px; left: 4px; width: 16px; height: 8px; background: #333;
@@ -250,14 +236,12 @@ body {
 .candy-cane {
   position: absolute; bottom: 35px; left: 50%; width: 8px; height: 45px;
   background: repeating-linear-gradient(45deg, #fff, #fff 5px, #e63946 5px, #e63946 10px);
-  border-radius: 4px 4px 0 0;
 }
 
-/* --- Décors Égypte --- */
 .desert-bg { background-color: var(--desert-gold); }
 .floor-line-desert {
   position: absolute; bottom: 0; left: 0; right: 0; height: 35px;
-  background: var(--desert-sand); border-radius: 12px 12px 0 0;
+  background: var(--desert-sand); border-radius: 0;
 }
 .pyramid {
   position: absolute; bottom: 35px; right: 30px;
@@ -265,19 +249,13 @@ body {
   border-left: 30px solid transparent; border-right: 30px solid transparent;
   border-bottom: 45px solid #d4a323;
 }
-.cactus {
-  position: absolute; bottom: 35px; left: 60px; width: 10px; height: 35px; background: #28a745;
-  border-radius: 4px 4px 0 0;
-}
 
-/* Nom de la map sous la plateforme */
 .map-name {
   text-align: center;
-  font-weight: 900;
-  font-size: 1.3rem;
-  margin-top: 12px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 0.8rem;
+  margin-top: 15px;
+  color: var(--text-white);
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
 }
 
 /* ─── Layout du Lobby ────────────────────────────────────────────────────── */
@@ -292,8 +270,9 @@ body {
 .card-panel {
   background: rgba(255,255,255,0.12);
   border: 4px solid var(--text-white);
-  border-radius: 24px;
+  border-radius: 0;
   padding: 24px;
+  box-shadow: 12px 12px 0 rgba(0,0,0,0.2);
 }
 
 .players-panel {
@@ -309,82 +288,80 @@ body {
 }
 
 .panel-title {
-  font-size: 1rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  margin-bottom: 15px;
-  border-bottom: 3px solid rgba(255,255,255,0.2);
-  padding-bottom: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+  border-bottom: 4px solid var(--text-white);
+  padding-bottom: 12px;
 }
 
 .pixel-list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .pixel-list li {
-  background: rgba(255,255,255,0.9);
+  background: var(--text-white);
   color: #222;
-  padding: 12px 18px;
-  border-radius: 12px;
-  font-weight: 700;
-  font-size: 1rem;
-  border: 2px solid #fff;
+  padding: 14px 18px;
+  border-radius: 0;
+  font-size: 0.7rem;
+  border: 4px solid #222;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
 }
 
-/* Boutons d'action spécifiques */
 .settings-trigger-btn {
-  background: transparent;
+  background: rgba(255,255,255,0.2);
   border: 4px solid var(--text-white);
-  border-radius: 16px;
-  font-weight: 900;
-  padding: 12px;
+  box-shadow: 6px 6px 0 rgba(0,0,0,0.2);
+}
+.settings-trigger-btn:hover {
+  transform: translate(2px, 2px); box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
+}
+.settings-trigger-btn:active {
+  transform: translate(6px, 6px); box-shadow: 0px 0px 0 rgba(0,0,0,0.2);
 }
 
 .start-game-btn {
   width: 100%;
 }
 
-/* ─── Modale de Paramètres (Image 2 de référence exacte) ──────────────────── */
+/* ─── Modale de Paramètres ──────────────────── */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 43, 56, 0.75); /* Effet d'assombrissement bleuté */
+  background: rgba(15, 43, 56, 0.85);
   z-index: 999;
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 20px;
-  animation: fadeIn 0.2s ease-out;
 }
 
 .modal-box {
   background-color: var(--modal-pink);
   border: 6px solid var(--text-white);
-  border-radius: 36px;
+  border-radius: 0;
   padding: 40px;
   width: 100%;
-  max-width: 520px;
+  max-width: 550px;
   text-align: center;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-  position: relative;
+  box-shadow: 20px 20px 0 rgba(0,0,0,0.5);
 }
 
 .modal-title {
-  font-size: 3rem;
-  font-weight: 900;
+  font-size: 2rem;
   color: var(--text-white);
-  margin-bottom: 30px;
-  letter-spacing: 0.05em;
+  margin-bottom: 40px;
+  text-shadow: 4px 4px 0 rgba(0,0,0,0.2);
 }
 
 .settings-rows-container {
   display: flex;
   flex-direction: column;
-  gap: 25px;
-  margin-bottom: 25px;
+  gap: 30px;
+  margin-bottom: 30px;
 }
 
 .setting-row {
@@ -396,10 +373,9 @@ body {
 }
 
 .setting-label {
-  font-size: 1.8rem;
-  font-weight: 900;
+  font-size: 1rem;
   color: var(--text-white);
-  letter-spacing: 0.02em;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
 }
 
 .setting-toggle-group {
@@ -407,48 +383,38 @@ body {
   gap: 10px;
 }
 
-/* Boutons de sélection internes (Image 2) */
 .btn.toggle-choice {
   border: 4px solid var(--text-white);
-  border-radius: 14px;
   background: transparent;
   color: var(--text-white);
-  padding: 6px 18px;
-  font-size: 1.3rem;
-  font-weight: 900;
-  box-shadow: none;
+  padding: 10px 16px;
+  font-size: 0.8rem;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
 }
 
 .btn.toggle-choice.active {
   background: var(--text-white);
   color: var(--modal-pink);
+  box-shadow: none;
+  transform: translate(4px, 4px);
 }
 
 .modal-notice {
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
+  font-size: 0.6rem;
   color: var(--text-white);
-  margin-top: 30px;
+  margin-top: 40px;
   margin-bottom: 20px;
 }
 
-/* Bouton CLOSE spécial en bas */
 .btn.close-modal-btn {
-  background: transparent;
+  background: #2c3e50;
   border: 4px solid var(--text-white);
   color: var(--text-white);
-  padding: 10px 40px;
-  font-size: 1.4rem;
-  border-radius: 0; /* Rectangulaire comme sur l'image */
-  box-shadow: none;
-  display: inline-block;
-  margin-top: 10px;
+  padding: 15px 40px;
+  box-shadow: 6px 6px 0 rgba(0,0,0,0.3);
 }
-
-.btn.close-modal-btn:hover {
-  background: rgba(255,255,255,0.2);
-}
+.btn.close-modal-btn:hover { transform: translate(2px,2px); box-shadow: 4px 4px 0 rgba(0,0,0,0.3); }
+.btn.close-modal-btn:active { transform: translate(6px,6px); box-shadow: 0 0 0 rgba(0,0,0,0.3); }
 
 /* ─── Écran de Jeu & Canvas ──────────────────────────────────────────────── */
 #game-screen {
@@ -456,8 +422,8 @@ body {
   max-width: none;
   width: 100vw;
   height: 100vh;
-  gap: 20px;
-  padding: 20px;
+  gap: 30px;
+  padding: 30px;
 }
 
 .game-wrapper {
@@ -470,9 +436,9 @@ body {
 
 #game-canvas {
   background: #4facfe;
-  border: 6px solid var(--text-white);
-  border-radius: 24px;
-  box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+  border: 8px solid var(--text-white);
+  border-radius: 0;
+  box-shadow: 16px 16px 0 rgba(0,0,0,0.4);
   max-width: 100%;
   max-height: 100%;
 }
@@ -489,14 +455,13 @@ body {
 }
 
 .hud-panel {
-  background: rgba(0, 0, 0, 0.6);
-  border: 3px solid var(--text-white);
-  border-radius: 12px;
-  padding: 10px 18px;
-  font-weight: 800;
-  font-size: 1rem;
-  letter-spacing: 0.05em;
+  background: rgba(0, 0, 0, 0.8);
+  border: 4px solid var(--text-white);
+  border-radius: 0;
+  padding: 14px 20px;
+  font-size: 0.7rem;
   pointer-events: auto;
+  box-shadow: 6px 6px 0 rgba(0,0,0,0.3);
 }
 
 .alert-panel {
@@ -505,132 +470,138 @@ body {
 
 /* Sidebar du jeu */
 .game-sidebar {
-  width: 220px;
+  width: 260px;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 20px;
 }
 
 .sidebar-info-panel {
-  background: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.15);
   border: 4px solid var(--text-white);
-  border-radius: 18px;
-  padding: 15px;
+  border-radius: 0;
+  padding: 20px;
   flex: 1;
+  box-shadow: 12px 12px 0 rgba(0,0,0,0.3);
 }
 
 .sidebar-info-panel h4 {
-  font-size: 0.85rem;
-  border-bottom: 2px solid rgba(255,255,255,0.2);
-  padding-bottom: 6px;
-  margin-bottom: 10px;
+  font-size: 0.8rem;
+  border-bottom: 4px solid var(--text-white);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
 }
 
 .pixel-list-compact {
   list-style: none;
-  font-size: 0.85rem;
+  font-size: 0.6rem;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 12px;
 }
-/* ─── Ajouts pour le système de salon (Color Wars style) ──────────────────── */
+.pixel-list-compact li {
+  background: rgba(0,0,0,0.4);
+  padding: 10px;
+  border: 2px solid var(--text-white);
+}
 
-/* Bannière code salon */
+/* ─── Bannière & Chat ──────────────────── */
 .room-code-banner {
-  font-size: 1rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  color: var(--text-white);
-  background: rgba(255,255,255,0.15);
-  border: 3px solid var(--text-white);
-  border-radius: 14px;
-  padding: 10px 24px;
-  margin-bottom: 20px;
+  font-size: 0.8rem;
+  background: var(--dark-slate);
+  border: 4px solid var(--text-white);
+  border-radius: 0;
+  padding: 15px 24px;
+  margin-bottom: 30px;
   text-align: center;
+  box-shadow: 8px 8px 0 rgba(0,0,0,0.2);
 }
 
 .host-badge {
   display: inline-block;
   background: #f4e04d;
   color: #222;
-  font-size: 0.75rem;
-  font-weight: 900;
-  border-radius: 8px;
-  padding: 3px 10px;
+  font-size: 0.5rem;
+  padding: 6px 10px;
   margin-left: 10px;
   vertical-align: middle;
+  border: 2px solid #222;
 }
 
 .guest-badge {
   display: inline-block;
-  background: rgba(255,255,255,0.2);
+  background: #666;
   color: #fff;
-  font-size: 0.75rem;
-  font-weight: 700;
-  border-radius: 8px;
-  padding: 3px 10px;
+  font-size: 0.5rem;
+  padding: 6px 10px;
   margin-left: 10px;
   vertical-align: middle;
+  border: 2px solid #fff;
 }
 
-/* Désactivation des contrôles pour les invités */
 .disabled-for-guest {
-  opacity: 0.4;
+  opacity: 0.5;
   pointer-events: none;
+  filter: grayscale(100%);
 }
 
-/* ─── Chat Section ────────────────────────────────────────────────────────── */
 .chat-section {
   width: 100%;
   max-width: 850px;
   margin-top: 20px;
-  background: rgba(255,255,255,0.1);
-  border: 3px solid rgba(255,255,255,0.4);
-  border-radius: 18px;
-  padding: 14px;
+  background: rgba(0,0,0,0.4);
+  border: 4px solid var(--text-white);
+  border-radius: 0;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 15px;
+  box-shadow: 8px 8px 0 rgba(0,0,0,0.2);
 }
 
 .chat-messages {
-  max-height: 100px;
+  max-height: 120px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 0.9rem;
+  gap: 8px;
+  font-size: 0.6rem;
+  line-height: 1.5;
 }
 
 .chat-msg {
-  background: rgba(0,0,0,0.2);
-  border-radius: 8px;
-  padding: 4px 10px;
-  color: #fff;
+  background: rgba(255,255,255,0.1);
+  padding: 8px 12px;
+  border-left: 4px solid var(--text-white);
 }
 
 .chat-input-row {
   display: flex;
-  gap: 8px;
+  gap: 12px;
 }
 
 .chat-input-row input {
   flex: 1;
-  padding: 10px 14px;
-  border: 3px solid rgba(255,255,255,0.6);
-  border-radius: 12px;
-  background: rgba(255,255,255,0.15);
+  padding: 12px 14px;
+  border: 4px solid var(--text-white);
+  border-radius: 0;
+  background: var(--dark-slate);
   color: #fff;
-  font-family: 'Outfit', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
   outline: none;
 }
 
 .chat-input-row input::placeholder { color: rgba(255,255,255,0.5); }
 
 .btn-chat {
-  padding: 10px 18px;
-  font-size: 1.1rem;
-  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 0.8rem;
+  border-radius: 0;
+  background: #2cd15d;
+  box-shadow: 4px 4px 0 #1b943e;
+}
+.btn-chat:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 #1b943e;
 }
